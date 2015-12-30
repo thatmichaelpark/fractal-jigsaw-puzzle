@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<title>Zoom in/out at mouse position</title>
+	<title>Zoom in/out at mouse position and drag</title>
 	<style>
 
 div {
@@ -29,16 +29,45 @@ window.onload = function() {
 	var canvas = document.getElementById('canvas');
 	var ctx = canvas.getContext('2d');
 
+	var origin;
 	var zoom = 1.0;
 
-	canvas.addEventListener("wheel", MouseWheelHandler, false);
+	canvas.addEventListener("wheel", mouseWheelHandler, false);
+	canvas.addEventListener("mousedown", mouseDownHandler, false);
 
-	var origin;
-	
 	resize();
 	redraw();
+
+	var dragStart = {x: 0, y: 0};
 	
-	function MouseWheelHandler(e) {
+	function mouseDownHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		dragStart.x = mouse.x - origin.x;
+		dragStart.y = mouse.y - origin.y;
+		canvas.addEventListener("mousemove", mouseMoveHandler, false);
+		canvas.addEventListener("mouseup", mouseUpHandler, false);
+	}
+	
+	function mouseMoveHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		origin.x = mouse.x - dragStart.x;
+		origin.y = mouse.y - dragStart.y;
+		redraw();
+	}
+	
+	function mouseUpHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		origin.x = mouse.x - dragStart.x;
+		origin.y = mouse.y - dragStart.y;
+		redraw();
+		canvas.removeEventListener("mousemove", mouseMoveHandler);
+		canvas.removeEventListener("mouseup", mouseUpHandler);
+	}
+	
+	function mouseWheelHandler(e) {
 		var bRect = canvas.getBoundingClientRect();
 		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
 		var oldZoom = zoom;
