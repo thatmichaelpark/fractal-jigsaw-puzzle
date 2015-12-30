@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<title>Zoom square in/out</title>
+	<style>
+
+div {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	overflow: hidden;
+}
+
+	</style>
+</head>
+<body>
+	<div id="div">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	
+	<script>
+	
+window.onload = function() {
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+
+	var sq = {};
+	sq.e = canvas;
+	sq.zoom = 1.0;
+	
+	sq.e.addEventListener("wheel", MouseWheelHandler, false);
+
+	resize();
+	redraw();
+	
+	function MouseWheelHandler(e) {
+		if (e.wheelDelta < 0) {
+			sq.zoom *= 0.9;
+		} else if (e.wheelDelta > 0) {
+			sq.zoom /= 0.9;
+		}
+		console.log(sq.zoom);;;
+		redraw();
+		return false;
+	}
+
+	function resize() {
+		var div = document.getElementById('div');
+		canvas.width = div.clientWidth;
+		canvas.height = div.clientHeight;
+	}
+	
+	function redraw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.save();
+		ctx.fillStyle = 'red';
+		ctx.lineWidth = 10;
+		ctx.translate(canvas.width/2, canvas.height/2);
+		ctx.scale(sq.zoom, sq.zoom);
+		ctx.strokeRect(-100, -100, 200, 200);
+		ctx.restore();
+	}
+	
+	window.addEventListener('resize', resizeListener);
+	
+	function resizeListener(e) {
+		console.log(e);
+		resize();
+		redraw();
+	}
+
+}
+
+	</script>
+</body>
+</html>
