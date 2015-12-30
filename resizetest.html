@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<title>Zoom square in/out</title>
+	<title>Zoom in/out at mouse position</title>
 	<style>
 
 div {
@@ -29,22 +29,26 @@ window.onload = function() {
 	var canvas = document.getElementById('canvas');
 	var ctx = canvas.getContext('2d');
 
-	var sq = {};
-	sq.e = canvas;
-	sq.zoom = 1.0;
-	
-	sq.e.addEventListener("wheel", MouseWheelHandler, false);
+	var zoom = 1.0;
 
+	canvas.addEventListener("wheel", MouseWheelHandler, false);
+
+	var origin;
+	
 	resize();
 	redraw();
 	
 	function MouseWheelHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		var oldZoom = zoom;
 		if (e.wheelDelta < 0) {
-			sq.zoom *= 0.9;
+			zoom *= 0.9;
 		} else if (e.wheelDelta > 0) {
-			sq.zoom /= 0.9;
+			zoom /= 0.9;
 		}
-		console.log(sq.zoom);;;
+		origin.x = mouse.x - (mouse.x - origin.x) / oldZoom * zoom;
+		origin.y = mouse.y - (mouse.y - origin.y) / oldZoom * zoom;
 		redraw();
 		return false;
 	}
@@ -53,16 +57,28 @@ window.onload = function() {
 		var div = document.getElementById('div');
 		canvas.width = div.clientWidth;
 		canvas.height = div.clientHeight;
+		origin = {x: canvas.width/2, y: canvas.height/2};
 	}
 	
 	function redraw() {
 		ctx.clearRect(0, 0, canvas.width, canvas.height);
 		ctx.save();
-		ctx.fillStyle = 'red';
 		ctx.lineWidth = 10;
-		ctx.translate(canvas.width/2, canvas.height/2);
-		ctx.scale(sq.zoom, sq.zoom);
-		ctx.strokeRect(-100, -100, 200, 200);
+		ctx.translate(origin.x, origin.y);
+		ctx.scale(zoom, zoom);
+		for (var i=0; i<3; ++i) {
+			for (var j=0; j<3; ++j) {
+				ctx.strokeStyle = ['red', 'green', 'blue', 'black'][(i*3+j)%4];
+				ctx.strokeRect((j-1)*200-90, (i-1)*200-90, 180, 180);
+			}
+		}
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(-10, -10);
+		ctx.lineTo(10, 10);
+		ctx.moveTo(10, -10);
+		ctx.lineTo(-10, 10);
+		ctx.stroke();
 		ctx.restore();
 	}
 	
