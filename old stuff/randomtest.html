@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="mandyApp">
+<head>
+	<meta charset="UTF-8" />
+	<title>Experiment: pseudorandom</title>
+	<style>
+
+#drawdiv {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 50%;
+	bottom: 0;
+}
+
+	</style>
+</head>
+<body ng-controller="Ctrl">
+	<div id="drawdiv"">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	<script>
+"use strict"
+
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+
+var im = InitImageData(300, 300, 0.011, 0, 300, 300);
+
+resize();
+redraw();
+
+window.addEventListener('resize', resizeListener);
+
+function InitImageData(w, h, x0, y0, x1, y1) {
+	var im = new ImageData(w, h);
+	var data = im.data;
+	var k = 0;
+	for (var i=0; i<h; ++i) {
+		var y = y0 + (y1 - y0) * i / h;
+		for (var j=0; j<w; ++j) {
+			var x = x0 + (x1 - x0) * j / w;
+			var c = flip(i*j*5*5*((i+5)*(j+5))) ? 0 : 255;
+			data[k++] = c;
+			data[k++] = c;
+			data[k++] = c;
+			data[k++] = 255;
+		}
+	}
+	return im;
+
+	function flip(a) {
+		var s = a + '';
+		var b = false;
+		for (var i=0; i<s.length; ++i) {
+			var d = s.charAt(i);
+			if (d == '1' || d == '3' || d == '5' || d == '7' || d == '9') {
+				b = !b;
+			}
+		}
+		return b;
+	}
+}
+
+function redraw() {
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.putImageData(im, 0, 0);
+	ctx.beginPath();
+	ctx.moveTo(410.5, 0);
+	ctx.lineTo(410.5, 100.5);
+	ctx.lineTo(411.5, 100.5);
+	ctx.lineTo(411.5, 102.5);
+	ctx.lineTo(410.5, 102.5);
+	ctx.lineTo(410.5, 200);
+	ctx.stroke();
+	ctx.fillRect(420, 0, 1, 100);
+	ctx.fillRect(425, 0, 0.5, 100);
+	ctx.fillRect(425, 100, -0.5, 100);
+	ctx.fillRect(430.5, 0, 1, 100);
+}
+
+function resize() {
+	var div = document.getElementById('drawdiv');
+	canvas.width = div.clientWidth;
+	canvas.height = div.clientHeight;
+}
+
+function resizeListener(e) {
+	resize();
+	redraw();
+}
+	</script>
+</body>
+</html>

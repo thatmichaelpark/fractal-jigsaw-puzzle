@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="testApp">
+<head>
+	<meta charset="UTF-8" />
+	<title>Puzzle test 02</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<style>
+
+#drawdiv {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+	</style>
+</head>
+<body ng-controller="Ctrl">
+	<div id="drawdiv"">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	<div id="datadiv">
+	</div>
+	<script src="Imd5_02.js"></script>
+	<script>
+"use strict"
+new Imd5(3);
+angular.module('testApp', []).controller('Ctrl', function ($scope) {
+
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	
+	var cx0 = 1 + 5 + 25 + 125 + 1; // the extra +1 is for the outline.
+	var cy0 = cx0;
+	var width = 625 + (cx0) * 2;
+	var height = width;
+	
+	canvas.width = width;
+	canvas.height = height;
+
+	ctx.fillStyle = 'white';
+	ctx.fillRect(0, 0, width, height);
+/*	
+	for (var i=-1; i<=5; ++i){
+		for (var j=-1; j<=5; ++j) {
+			ctx.save();
+			ctx.translate(cx0 + j * 125 + 62, cy0 + i * 125 + 62);
+			ctx.fillStyle = 'rgb('+Math.floor(Math.random()*255)+','+Math.floor(Math.random()*255)+','+Math.floor(Math.random()*255)+')';
+			ctx.fillRect(-62, -62, 125, 125);
+			ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+			ctx.fillRect(-30, -30, 60, 60);
+			ctx.fillStyle = 'black';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.font = '25px Arial';
+			ctx.fillText(i+', '+j, 0, 0);
+			ctx.restore();
+		}		
+	}
+*/
+	var imbig = new Imd5(4);
+	imbig.xorRect(0, 0, imbig.side, imbig.side, 255, 0, 0, 0);
+	
+	var z0 = {re: 0.1, im: 0.5};
+	var z1 = {re: 0.2, im: 0.6};
+	
+	imbig.makePiece(z0, z1);
+
+	ctx.drawImage(imbig.toImg(), 0, 0);
+console.log('...');;;
+	
+	for (var i=0; i<5; ++i) {
+		for (var j=0; j<5; ++j) {
+			var im = new Imd5(3);
+			im.xorRect(0, 0, im.side, im.side, 0, 255, 0, 0);
+			im.makePiece(zinterp(z0, z1, i, j), zinterp(z0, z1, i+1, j+1));
+			
+			ctx.drawImage(im.toImg(), imbig.padding-im.padding+j*125, imbig.padding-im.padding+i*125);
+		}
+	}
+
+	
+//	resize();
+//	redraw();
+
+//	window.addEventListener('resize', resizeListener);
+
+	function resize() {
+		var div = document.getElementById('drawdiv');
+		canvas.width = div.clientWidth;
+		canvas.height = div.clientHeight;
+	}
+	
+	function redraw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.putImageData(im, 0, 0);
+//		DrawPieces();
+	}
+	
+	function resizeListener(e) {
+		resize();
+		redraw();
+	}
+});
+
+	</script>
+</body>
+</html>

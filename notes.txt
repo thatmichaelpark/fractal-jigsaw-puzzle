@@ -1,0 +1,26 @@
+
+
+Level: draw children; fill in those that are filled in.
+
+Zoom in:
+* erase all other pieces, enlarge selected piece to x5 at center of screen
+* selected piece becomes the new current level
+* if selected piece is filled in, then
+	There should be a large but pixelated piece on screen
+	Display the children as they get filled in (which will all be in their proper places, because the level is done); this will cover the pixelated piece with high-res pieces.
+	Remove pixelated piece
+* else (selected piece is not filled in)
+	Replace pixelated piece with high-res outline of piece.
+	Display all children, fill them in.
+
+
+Zoom out:
+If level is done (all pieces filled in and in place):
+	Shrink all children to 1/5 on screen where it was in the upper level
+	Draw outline of upper level
+	Replace all children with the corresponding upper-level piece after it's been filled in.
+	Display the rest of the children and fill them in.
+
+If level is not done:
+	Shrink level outline to 1/5 on screen where corresponding upper-level piece will be.
+	

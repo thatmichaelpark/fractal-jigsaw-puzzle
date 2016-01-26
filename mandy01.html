@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="mandyApp">
+<head>
+	<meta charset="UTF-8" />
+	<title>Mandelbrot step 0</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<style>
+
+#drawdiv {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 50%;
+	bottom: 0;
+}
+#datadiv {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	right: 0;
+	bottom: 0;
+	border: 1px solid green;
+}
+
+	</style>
+</head>
+<body ng-controller="Ctrl">
+	<div id="drawdiv"">
+		<canvas id="canvas" ng-mousedown="mouseDownListener($event)">
+		</canvas>
+	</div>
+	<div id="datadiv">
+		<div>
+			<input type="number" ng-model="x0">
+			<input type="number" ng-model="y0">
+			<button ng-click="redrawClick()">Redraw</button>
+		</div>
+		<div>
+			<input type="number" ng-model="zoom">
+			<button ng-click="zoomOut()">Zoom Out</button>
+		</div>
+		<div>
+			<input type="number" ng-model="limit">
+		</div>
+		<div>
+			<input type="number" ng-model="paletteSize">
+		</div>
+	</div>
+	<script>
+"use strict"
+/*
+
+points of interest:
+-0.02351291916615672, 0.7969225216098301
+-0.04944273066666653, 0.6747209386666666
+-0.1504206657844183, 1.0444286961792955
+-0.7436424932257446, 0.1318316199009883
+*/
+
+angular.module('mandyApp', []).controller('Ctrl', function ($scope) {
+
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	var logDiv = document.getElementById('logdiv');
+	
+	var height = 400;//625 + (125 + 25 + 5 + 1) * 2;
+	var width = height;
+	
+	var im = new ImageData(width, height);
+
+	$scope.zoom = 10000000;
+	$scope.limit = 2550;
+	$scope.paletteSize = 700;
+	var palette = [];
+	
+	function MakePalette() {
+		palette = [];
+		for (var i=0; i<$scope.paletteSize; ++i) {
+			palette.push(blah(i));
+		}
+	
+		function blah(i) {
+			var s = $scope.paletteSize / 7;
+			var f = (i % s) / s;
+			var k = Math.floor(i / s) + 1;
+			var c = Math.floor(f * 255);
+			var r = k & 1 ? c : 0;
+			var g = k & 2 ? c : 0;
+			var b = k & 4 ? c : 0;
+			return {r:r, g:g, b:b};
+		}
+	}
+	
+	function MakePalette_rainbow() {
+		palette = [];
+		for (var i=0; i<$scope.paletteSize; ++i) {
+			palette.push({r: blah(i/$scope.paletteSize), g: blah(i/$scope.paletteSize + 2/3), b: blah(i/$scope.paletteSize + 1/3)});
+		}
+		
+		function blah(f) {
+			while (f > 1) {
+				f -= 1;
+			}
+			if (f < 1/3) {
+				return 255;
+			} else if (f < 0.5) {
+				return Math.floor((0.5 - f) * 6 * 255);
+			} else if (f < 5/6) {
+				return 0;
+			} else {
+				return Math.floor((f - 5/6) * 6 * 255);
+			}
+		}
+	}
+	
+	function MakePalette1(palette) {
+		for (var i=0; i<paletteSize; ++i) {
+			palette.push({r:((i)*2)&255, g:((i)*3)&255, b:((i)*1)&255});
+		}
+		palette[0] = {r:0, g:0, b:0};
+	}
+
+	$scope.x0 = -0.7436424932257446;
+	$scope.y0 = 0.1318316199009883;
+
+	MakePalette();
+	set($scope.x0, $scope.y0, $scope.zoom, im.data, width, height);
+	
+	resize();
+	redraw();
+
+	window.addEventListener('resize', resizeListener);
+
+	function DrawPieces() {
+	//ctx.translate(0.5, 0.5);;;
+		ctx.lineWidth = 0.3;
+		var d = 2 / $scope.zoom;
+		var x0 = $scope.x - d;
+		var x1 = $scope.x + d;
+		var y0 = $scope.y - d;
+		var y1 = $scope.y + d;
+		for (var i=0; i<5; ++i) {
+			var yt = i * 125 + 125 + 25 + 5 + 1;
+			var yb = (i + 1) * 125 + 125 + 25 + 5 + 1;
+			for (var j=0; j<5; ++j) {
+				var xl = j * 125 + 125 + 25 + 5 + 1;
+				var xr = (j + 1) * 125 + 125 + 25 + 5 + 1;
+				ctx.save();
+				ctx.translate((j-4)*30, (i-4)*30);
+				ctx.beginPath();
+				Line(xl, yt, xr, yt);
+				Line(xr, yt, xr, yb);
+				Line(xl, yb, xr, yb);
+				Line(xl, yt, xl, yb);
+				ctx.stroke();
+				ctx.restore();
+			}
+		}
+		
+		function Line(x0, y0, x1, y1) {
+			if (y0 == y1) {
+				var dx = x1 - x0;
+				if (dx == 1 || dx == -1) {
+					ctx.moveTo(x0, y0);
+					ctx.lineTo(x1, y1);
+					return;
+				}
+				var dx5 = dx / 5;
+				var xa = x0 + dx5 * 2;
+				var xb = xa + dx5;
+				var y = y0 + dx5;
+				if (flip(x0*x1*y0*y1)) {
+					y = y0 - dx5;
+				}
+				Line(x0, y0, x0 + dx5, y0);
+				Line(x0 + dx5, y0, xa, y0);
+				Line(xa, y0, xa, y);
+				Line(xa, y, xb, y);
+				Line(xb, y0, xb, y);
+				Line(xb, y0, xb + dx5, y0);
+				Line(xb + dx5, y0, x1, y1);
+			} else {	// vertical
+				var dy = y1 - y0;
+				if (dy == 1 || dy == -1) {
+					ctx.moveTo(x0, y0);
+					ctx.lineTo(x1, y1);
+					return;
+				}
+				var dy5 = dy / 5;
+				var ya = y0 + dy5 * 2;
+				var yb = ya + dy5;
+				var x = x0 + dy5;
+				if (flip(x0*x1*y0*y1)) {
+					x = x0 - dy5;
+				}
+				Line(x0, y0, x0, y0 + dy5);
+				Line(x0, y0 + dy5, x0, ya);
+				Line(x0, ya, x, ya);
+				Line(x, ya, x, yb);
+				Line(x0, yb, x, yb);
+				Line(x0, yb, x0, yb + dy5);
+				Line(x0, yb + dy5, x1, y1);
+			}
+		}
+		
+		function flip(a) {
+			var s = a + '';
+			var b = false;
+			for (var i=0; i<s.length; ++i) {
+				var d = s.charAt(i);
+				if (d == '1' || d == '3' || d == '5' || d == '7' || d == '9') {
+					b = !b;
+				}
+			}
+			return b;
+		}
+	}
+	
+	function set(x, y, zoom, data, w, h) {
+		var d = 2 / zoom;
+		var x0 = x - d;
+		var x1 = x + d;
+		var y0 = y - d;
+		var y1 = y + d;
+		var k = 0;
+		y = y1;	// +ve y is up
+		var dy = (y0 - y1) / h;
+		for (var i=0; i<h; ++i) {
+			x = x0;
+			var dx = (x1 - x0) / w;
+			for (var j=0; j<w; ++j) {
+				var n = bbm(x, y);
+				var p = palette[n % $scope.paletteSize];
+				data[k++] = p.r;
+				data[k++] = p.g;
+				data[k++] = p.b;
+				data[k++] = 255;
+				x += dx;
+			}
+			y += dy;	
+		}
+	}
+	
+	function bbm(x, y) {
+	
+		function add(a, b) {
+			return {re: a.re + b.re, im: a.im + b.im};
+		}
+		function mul(a, b) {
+			return {re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re};
+		}
+		
+		var c = { re: x, im: y };
+		var z = { re: 0, im: 0 };
+		var n = 0;
+		do {
+			++n;
+			z = add(mul(z, z), c);
+		} while (n < $scope.limit && z.re * z.re + z.im * z.im <= 4);
+		return n;// < $scope.limit ? n : 0;
+	}
+	
+	$scope.mouseDownListener = function (e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouseX = (e.clientX - bRect.left);
+		var mouseY = (e.clientY - bRect.top);
+		var dx = 2 / $scope.zoom;
+		var dy = 2 / $scope.zoom;
+		$scope.x0 = $scope.x0 - dx + mouseX / width * dx * 2;
+		$scope.y0 = $scope.y0 + dx - mouseY / height * dy * 2;
+		$scope.zoom *= 5;
+		set($scope.x0, $scope.y0, $scope.zoom, im.data, width, height);
+		redraw();
+	}
+	$scope.zoomOut = function () {
+		$scope.zoom /= 5;
+		set($scope.x0, $scope.y0, $scope.zoom, im.data, width, height);
+		redraw();
+	}
+	$scope.redrawClick = function () {
+		MakePalette();
+		set($scope.x0, $scope.y0, $scope.zoom, im.data, width, height);
+		redraw();
+	}
+	
+	function resize() {
+		var div = document.getElementById('drawdiv');
+		canvas.width = div.clientWidth;
+		canvas.height = div.clientHeight;
+	}
+	
+	function redraw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.putImageData(im, 0, 0);
+//		DrawPieces();
+	}
+	
+	function resizeListener(e) {
+		resize();
+		redraw();
+	}
+});
+
+	</script>
+</body>
+</html>

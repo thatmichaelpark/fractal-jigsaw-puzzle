@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="testApp">
+<head>
+	<meta charset="UTF-8" />
+	<title>Puzzle test 01</title>
+	<style>
+
+div {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+progress {
+position:absolute;
+top:0%;
+left: 20%;
+}
+
+	</style>
+</head>
+<body ng-controller="Ctrl">
+	<div id="drawdiv"">
+		<canvas id="canvas">
+		</canvas>
+		<progress id="progress" value="0" max="100"></progress>
+	</div>
+	<script src="piece.js"></script>
+	<script>
+"use strict"
+
+
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+
+var cx0 = 1 + 5 + 25 + 125 + 1; // the extra +1 is for the outline.
+var cy0 = cx0;
+var width = 625 + (cx0) * 2;
+var height = width;
+
+canvas.width = width;
+canvas.height = height;
+resize();
+
+ctx.fillStyle = 'white';
+ctx.fillRect(0, 0, width, height);
+
+var imbig = new Piece(4);
+imbig.xorRect(0, 0, imbig.wholeSide, imbig.wholeSide, 255, 0, 0, 0);
+imbig.makePiece(100, 230, 625, 625);
+imbig.outline();
+imbig.toImg();
+
+	var w = new Worker('worker.js');
+/*
+	w.postMessage({x:0, y:0, w:imbig.side, h:imbig.side, data:imbig.imageData.data, zoom:1});
+	w.onmessage = function (event) {
+		var p = event.data.progress;
+		document.getElementById('progress').value = p;
+		if (p == 100) {
+			document.getElementById('progress').style.visibility = 'hidden';
+			imbig.imageData = new ImageData(event.data.data, imbig.side, imbig.side);
+			imbig.toImg();
+		}
+	};
+*/
+
+var re0 = 100;
+var im0 = 230;
+var dre = 125;
+var dim = 125;
+var ims = [];
+
+var zi = im0-dim;
+for (var i=0; i<7; ++i) {
+	var zr = re0-dre;
+	for (var j=0; j<7; ++j) {
+		if (imbig.blocked(j*125+62, i*125+62, 0)) {
+			var im = new Piece(3);
+			ims.push(im);
+			im.xorRect(0, 0, im.wholeSide, im.wholeSide, 0, 255, 0, 0);
+			im.makePiece(zr, zi, dre, dim);
+			im.inoutline();
+			im.toImg();
+			
+			im.x0 = imbig.padding-im.padding-Math.pow(5, im.p5)+j*125;
+			im.y0 = imbig.padding-im.padding-Math.pow(5, im.p5)+i*125;
+			im.x = Math.random() * 600;
+			im.y = Math.random() * 600;
+			im.i = i - 1;	// -1..5
+			im.j = j - 1;	// -1..5
+		}
+		zr += dre;
+	}
+	zi += dim;
+}
+
+
+var imi = 0;
+var piece = ims[imi];
+var zoom = 937/(4*125);
+var re = 1/zoom*(piece.j-2);
+var im = 1/zoom*(2-piece.i);
+var d = 2 / (zoom*2.6455);
+
+w.postMessage({re: re-d, im: im+d, dre: d*2, dim: d*-2, w:piece.wholeSide, h:piece.wholeSide, data:piece.imageData.data});
+
+w.onmessage = function (event) {
+	var p = event.data.progress;
+	ims[imi].imageData = new ImageData(event.data.data, ims[imi].wholeSide, ims[imi].wholeSide);
+	ims[imi].toImg();
+	if (++imi < ims.length) {
+		piece = ims[imi];
+re = 1/zoom*(piece.j-2);
+im = 1/zoom*(2-piece.i);
+w.postMessage({re: re-d, im: im+d, dre: d*2, dim: d*-2, w:piece.wholeSide, h:piece.wholeSide, data:piece.imageData.data});
+	}
+};
+
+
+requestAnimationFrame(redraw);
+
+window.addEventListener('resize', resizeListener);
+
+function resize() {
+	var div = document.getElementById('drawdiv');
+	canvas.width = div.clientWidth;
+	canvas.height = div.clientHeight;
+}
+
+function redraw() {
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.drawImage(imbig.img, 0, 0);
+//	ctx.drawImage(testimg.img, 0, 0);
+	for (var i=0; i<ims.length; ++i) {
+		ims[i].x += (ims[i].x0 - ims[i].x) * 0.01;
+		ims[i].y += (ims[i].y0 - ims[i].y) * 0.01;
+		ctx.drawImage(ims[i].img, ims[i].x, ims[i].y);
+	}
+	requestAnimationFrame(redraw);
+}
+
+function resizeListener(e) {
+	resize();
+}
+
+	</script>
+</body>
+</html>

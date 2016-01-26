@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>HTML5 Full-Screen Demonstration</title>
+<style>
+*
+{
+	padding: 0;
+	margin: 0;
+}
+
+body
+{
+	height: 100%;
+	font-family: "Segoe UI", arial, helvetica, freesans, sans-serif;
+	margin: 10px;
+	color: #333;
+	background-color: #fff;
+	overflow-x: auto;
+	overflow-y: scroll;
+}
+
+p
+{
+	margin: 0 0 1em 0;
+}
+
+#squirrel
+{
+	display: block;
+	width: 20%;
+	margin: 2em auto;
+	border: 5px solid #ccc;
+	border-radius: 5px;
+	cursor: n-resize;
+	cursor: -webkit-zoom-in;
+	cursor: -moz-zoom-in;
+}
+</style>
+</head>
+<body>
+
+<header>
+<h1>HTML5 Mouse Wheel Event Demonstration</h1>
+</header>
+
+<article>
+
+<p>This demonstration illustrates how to use the HTML5 mouse wheel event. Hover your cursor over the image then scroll your mouse wheel&hellip;</p>
+
+<img id="squirrel" src="squirrel.jpg" alt="a squirrel" />
+
+<p>For further information, please refer to the article <a href="http://www.sitepoint.com/html5-javascript-mouse-wheel/"><strong>How to Use the HTML5 Mouse Wheel Event</strong></a>&hellip;</p>
+
+<p>This example code was developed by <a href="http://twitter.com/craigbuckler">Craig Buckler</a> of <a href="http://optimalworks.net/">OptimalWorks.net</a> for <a href="http://sitepoint.com/">SitePoint.com</a>.</p>
+
+<p>Please view the source and use this code as you wish. A link back to the article is appreciated.</p>
+
+</article>
+
+<script>
+window.onload = function() {
+
+	var sq = {};
+	sq.e = document.getElementById("squirrel");
+	if (sq.e.naturalWidth) {
+		sq.nw = sq.e.naturalWidth;
+	}
+	else {
+		var i = new Image();
+		i.src = sq.e.src;
+		sq.nw = i.width;
+	}
+	sq.zoom = 30;
+	
+	if (sq.e.addEventListener) {
+		sq.e.addEventListener("mousewheel", MouseWheelHandler, false);
+		sq.e.addEventListener("DOMMouseScroll", MouseWheelHandler, false);
+	}
+	else sq.e.attachEvent("onmousewheel", MouseWheelHandler);
+	
+	function MouseWheelHandler(e) {
+
+		// cross-browser wheel delta
+		var e = window.event || e;
+		var delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+		sq.e.style.width = Math.max(sq.zoom, Math.min(sq.nw, sq.e.width + (sq.zoom * delta))) + "px";
+console.log(e);;;
+		return false;
+	}
+
+}
+</script>
+
+</body>
+</html>

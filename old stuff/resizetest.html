@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<title>Zoom in/out at mouse position and drag</title>
+	<style>
+
+div {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	overflow: hidden;
+}
+
+	</style>
+</head>
+<body>
+	<div id="div">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	
+	<script>
+	
+window.onload = function() {
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+
+	var origin;
+	var zoom = 1.0;
+
+	canvas.addEventListener("wheel", mouseWheelHandler, false);
+	canvas.addEventListener("mousedown", mouseDownHandler, false);
+
+	resize();
+	redraw();
+
+	var dragStart = {x: 0, y: 0};
+	
+	function mouseDownHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		dragStart.x = mouse.x - origin.x;
+		dragStart.y = mouse.y - origin.y;
+		canvas.addEventListener("mousemove", mouseMoveHandler, false);
+		canvas.addEventListener("mouseup", mouseUpHandler, false);
+	}
+	
+	function mouseMoveHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		origin.x = mouse.x - dragStart.x;
+		origin.y = mouse.y - dragStart.y;
+		redraw();
+	}
+	
+	function mouseUpHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		origin.x = mouse.x - dragStart.x;
+		origin.y = mouse.y - dragStart.y;
+		redraw();
+		canvas.removeEventListener("mousemove", mouseMoveHandler);
+		canvas.removeEventListener("mouseup", mouseUpHandler);
+	}
+	
+	function mouseWheelHandler(e) {
+		var bRect = canvas.getBoundingClientRect();
+		var mouse = {x: e.clientX - bRect.left, y: e.clientY - bRect.top};
+		var oldZoom = zoom;
+		if (e.wheelDelta < 0) {
+			zoom *= 0.9;
+		} else if (e.wheelDelta > 0) {
+			zoom /= 0.9;
+		}
+		origin.x = mouse.x - (mouse.x - origin.x) / oldZoom * zoom;
+		origin.y = mouse.y - (mouse.y - origin.y) / oldZoom * zoom;
+		redraw();
+		return false;
+	}
+
+	function resize() {
+		var div = document.getElementById('div');
+		canvas.width = div.clientWidth;
+		canvas.height = div.clientHeight;
+		origin = {x: canvas.width/2, y: canvas.height/2};
+	}
+	
+	function redraw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.save();
+		ctx.lineWidth = 10;
+		ctx.translate(origin.x, origin.y);
+		ctx.scale(zoom, zoom);
+		for (var i=0; i<3; ++i) {
+			for (var j=0; j<11; ++j) {
+				ctx.strokeStyle = ['red', 'green', 'blue', 'black'][(i*3+j)%4];
+				ctx.strokeRect((j-5)*200-90, (i-1)*200-90, 180, 180);
+			}
+		}
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(-10, -10);
+		ctx.lineTo(10, 10);
+		ctx.moveTo(10, -10);
+		ctx.lineTo(-10, 10);
+		ctx.stroke();
+		ctx.restore();
+	}
+	
+	window.addEventListener('resize', resizeListener);
+	
+	function resizeListener(e) {
+		console.log(e);
+		resize();
+		redraw();
+	}
+
+}
+
+	</script>
+</body>
+</html>

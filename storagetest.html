@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="testApp">
+<head>
+	<meta charset="UTF-8" />
+	<title>Experiment: storage</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+	<style>
+
+#drawdiv {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 20%;
+	bottom: 0;
+}
+#datadiv {
+	position: absolute;
+	top: 0;
+	left: 80%;
+	right: 0;
+	bottom: 0;
+	border: 1px solid green;
+}
+
+	</style>
+</head>
+<body ng-controller="Ctrl">
+	<div id="drawdiv"">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	<div id="datadiv">
+		<div>
+			Level: {{level}}
+		</div>
+		<div>
+			<input type="number" ng-model="ii">
+			<input type="number" ng-model="jj">
+			<button ng-click="zoomInClick()">Zoom In</button>
+			<button ng-click="zoomOutClick()">Zoom Out</button>
+		</div>
+	</div>	<script src="piece.js"></script>
+	<script>
+"use strict"
+angular.module('testApp', []).controller('Ctrl', function ($scope) {
+
+$scope.level = 0;
+$scope.ii = 0;
+$scope.jj = 0;
+
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+window.addEventListener('resize', resizeListener);
+
+var worker = new Worker('worker.js');
+
+var thingsToDraw = [];
+var currentLevel = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
+console.log(JSON.stringify(currentLevel, function (key, value) {
+	if (key == 'parent') {
+		return value == null ? null : {levelNo: value.levelNo, ii: value.ii, jj: value.jj};
+	} else {
+		return value;
+	}
+}));;;
+blah();
+
+canvas.onclick = function (e) {
+	for (var i=thingsToDraw.length; --i>=0;) {
+		var mouseX = e.clientX-canvas.width/2;
+		var mouseY = e.clientY-canvas.height/2;
+		if (thingsToDraw[i].hitTest(mouseX, mouseY)) {
+			thingsToDraw[i].cx = mouseX;
+			thingsToDraw[i].cy = mouseY;
+			var temp = thingsToDraw[i];
+			thingsToDraw.splice(i, 1);
+			thingsToDraw.push(temp);
+			redraw();
+			break;
+		}
+	}
+}
+
+$scope.zoomInClick = function() {
+	var children = currentLevel.children || [];
+	for (var i=0; i<children.length; ++i) {
+		if (children[i].ii == $scope.ii && children[i].jj == $scope.jj) {
+			currentLevel = children[i];
+			blah();
+			return;
+		}
+	}
+	alert('Could not find');;;
+}
+
+$scope.zoomOutClick = function() {
+	if (currentLevel.parent) {
+		currentLevel.fullyDrawn = true;;;
+		currentLevel = currentLevel.parent;
+		blah();
+	} else {
+		alert('Already at top level');
+	}
+}
+
+function blah() {
+	$scope.level = currentLevel.levelNo;
+	var children = currentLevel.children || [];
+	var bigPiece = new Piece(4);
+	bigPiece.xorRect(0, 0, bigPiece.wholeSide, bigPiece.wholeSide, 255, 255, 200, 0);
+	bigPiece.makePiece(currentLevel.u0, currentLevel.v0, currentLevel.du, currentLevel.dv);
+	bigPiece.outline();
+	bigPiece.toImg();
+	thingsToDraw = [bigPiece];
+	for (var i=0; i<children.length; ++i) {
+		var c = children[i];
+		var piece = new Piece(3);
+		var color = c.children ? 255 : 0;
+		piece.xorRect(0, 0, piece.wholeSide, piece.wholeSide, color, color, color, 0);
+		piece.makePiece(c.u0, c.v0, c.du, c.dv);
+		piece.inoutline();
+		piece.toImg();
+		piece.re = c.re0 - c.dre / piece.pieceSide * piece.padding;
+		piece.im = c.im0 - c.dim / piece.pieceSide * piece.padding;
+		piece.dre = c.dre / piece.pieceSide * piece.wholeSide;
+		piece.dim = c.dim / piece.pieceSide * piece.wholeSide;
+		piece.cx = c.cx;
+		piece.cy = c.cy;
+		piece.fullyDrawn = c.fullyDrawn;
+		thingsToDraw.push(piece);
+	}
+	resize();
+	var i = 0;
+	i = getNextThing(i);
+	if (i >= 0) {
+		worker.postMessage({re: thingsToDraw[i].re, im: thingsToDraw[i].im, dre: thingsToDraw[i].dre, dim: thingsToDraw[i].dim, w:thingsToDraw[i].wholeSide, h:thingsToDraw[i].wholeSide, data:thingsToDraw[i].imageData.data});
+	}
+
+	worker.onmessage = function (event) {
+		var p = event.data.progress;
+		thingsToDraw[i].imageData = new ImageData(event.data.data, thingsToDraw[i].wholeSide, thingsToDraw[i].wholeSide);
+		thingsToDraw[i].toImg();
+		i = getNextThing(i);
+		if (i >= 0) {
+			piece = thingsToDraw[i];
+			worker.postMessage({re: thingsToDraw[i].re, im: thingsToDraw[i].im, dre: thingsToDraw[i].dre, dim: thingsToDraw[i].dim, w:thingsToDraw[i].wholeSide, h:thingsToDraw[i].wholeSide, data:thingsToDraw[i].imageData.data});
+		}
+		resize();
+	};
+	
+	function getNextThing(i) {
+		while (++i < thingsToDraw.length) {
+			if (thingsToDraw[i].fullyDrawn) {
+				return i;
+			}
+		}
+		return -1;
+	}
+}
+
+
+
+function resize() {
+	var div = document.getElementById('drawdiv');
+	canvas.width = div.clientWidth;
+	canvas.height = div.clientHeight;
+	redraw();
+}
+
+function redraw() {
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.save();
+	ctx.translate(canvas.width/2, canvas.height/2);
+	for (var i=0; i<thingsToDraw.length; ++i) {
+		thingsToDraw[i].draw(ctx);
+	}
+	ctx.restore();
+}
+
+function resizeListener(e) {
+	resize();
+}
+
+function createData(re, im, zoom, maxLevel) {
+	var re0 = re - 2/zoom;
+	var im0 = im + 2/zoom;
+	var dre = 4 / zoom;
+	var dim = -4 / zoom;
+	return createDataHelper(0, null, 0, 0, re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, maxLevel);
+	
+	function createDataHelper(levelNo, parent, ii, jj, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, rot, maxLevel) {
+		var levelData = {
+			parent: parent,
+			levelNo: levelNo,
+			ii: ii,
+			jj: jj,
+			re0: re0,
+			im0: im0,
+			dre: dre,
+			dim: dim,
+			u0: u0,
+			v0: v0,
+			du: du,
+			dv: dv,
+			cx: cx,
+			cy: cy,
+			rot: rot,
+		};
+		
+		if (levelNo == maxLevel) {
+			levelData.fullyDrawn = true;
+			levelData.children = null;
+		} else {
+			levelData.fullyDrawn = false;
+			levelData.children = [];
+
+			var piece = new Piece(1);
+			piece.makePiece(u0, v0, du, dv);
+
+			dre /= 5;
+			dim /= 5;
+			du /= 5;
+			dv /= 5;
+			for (var i=-1; i<=5; ++i) {
+				var v = v0 + i * dv;
+				var im = im0 + i * dim;
+				cy = (i - 2) * 125;
+				for (var j=-1; j<=5; ++j) {
+					var u = u0 + j * dv;
+					var re = re0 + j * dre;
+					cx = (j - 2) * 125;
+					if (piece.get(piece.padding+j, piece.padding+i).a) {
+						levelData.children.push(createDataHelper(levelNo+1, levelData, i, j,
+							re, im, dre, dim, u, v, du, dv, cx, cy, 0, maxLevel));
+					}
+				}
+			}
+		}
+		return levelData;
+	}
+}
+});
+	</script>
+</body>
+</html>

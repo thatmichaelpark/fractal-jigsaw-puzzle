@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="mandyApp">
+<head>
+	<meta charset="UTF-8" />
+	<title>Experiment: making puzzle pieces</title>
+	<style>
+
+#drawdiv {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 50%;
+	bottom: 0;
+}
+
+	</style>
+</head>
+<body ng-controller="Ctrl">
+	<div id="drawdiv"">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	<img src="http://i.imgur.com/HhfqbKC.jpg">
+	<script>
+"use strict"
+
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+
+var im = InitImageData(300, 300);
+
+var littleCanvas = document.createElement('canvas');
+littleCanvas.width = 300;
+littleCanvas.height = 300;
+var littleCtx = littleCanvas.getContext('2d');
+
+littleCtx.putImageData(im, 0, 0);
+var img = new Image();
+img.src = littleCanvas.toDataURL();
+
+
+resize();
+redraw();
+
+window.addEventListener('resize', resizeListener);
+
+function InitImageData(w, h) {
+	var im = new ImageData(w, h);
+	var data = im.data;
+	var k = 0;
+	for (var i=0; i<h; ++i) {
+		for (var j=0; j<w; ++j) {
+			data[k++] = Math.floor(j / w * 256);
+			data[k++] = Math.floor(i / w * 256);
+			data[k++] = Math.floor((i+j) / (w+w) * 256);
+			data[k++] = 100 <= i && i < 200 && 100 <= j && j < 200 ? 0 : 255;
+		}
+	}
+	return im;
+}
+
+function redraw() {
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.rotate(0.2);
+	ctx.drawImage(img, 100, 100);
+}
+
+function resize() {
+	var div = document.getElementById('drawdiv');
+	canvas.width = div.clientWidth;
+	canvas.height = div.clientHeight;
+}
+
+function resizeListener(e) {
+	resize();
+	redraw();
+}
+	</script>
+</body>
+</html>

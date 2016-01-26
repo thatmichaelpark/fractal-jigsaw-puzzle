@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<title>Test of fractal jigsaw piece</title>
+	<style>
+
+div {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	overflow: hidden;
+}
+
+	</style>
+</head>
+<body>
+	<div id="div">
+		<canvas id="canvas">
+		</canvas>
+	</div>
+	
+	<script>
+"use strict"
+
+window.onload = function() {
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+
+	var side = 4;		// each block is made of side x side sub-blocks
+	var maxDepth = 4;	// maxDepth = 0 => 1x1
+						//			  1 => 4x4
+						//			  2 => 16x16
+						//			  3 => 64x64
+	var maxDim = Math.pow(side, maxDepth);
+	var stuff = new Array(maxDim);
+	for (var i=0; i<maxDim; ++i) {
+		stuff[i] = new Array(maxDim);
+	}
+	
+	var d = 2;
+	var s = Math.pow(side, d);
+	for (var i=0; i<s; ++i) {
+		for (var j=0; j<s; ++j) {
+			var r = Math.floor(Math.random() * 255);
+			var g = Math.floor(Math.random() * 255);
+			var b = Math.floor(Math.random() * 255);
+			var col = "rgb(" + r + "," + g + "," + b + ")";
+			if (i < 4 || i >= 8 || j < 4 || j >= 8) col = "black";
+			blot(i, j, d, col);
+		}
+	}
+	
+	blah(2);
+	blah(3);
+	blah(4);
+
+	function blah(d) {
+		var p = 10.75;
+		var s = Math.pow(side, d-1);
+		for (var i=0; i<s; ++i) {
+			var u = i * side;
+			for (var j=0; j<s; ++j) {
+				var v = j * side;
+				var c = getPixel(u, v, d);
+				if (Math.random() < p) {
+					blot(u-1, v+1, d, c);
+				}
+				if (Math.random() < p) {
+					blot(u+4, v+2, d, c);
+				}
+				if (Math.random() < p) {
+					blot(u+2, v-1, d, c);
+				}
+				if (Math.random() < p) {
+					blot(u+1, v+4, d, c);
+				}
+			}
+		}
+	}
+	
+	function blot(row, col, depth, value) {
+	// Plots a 'pixel' at a particular row/col.
+		var s = Math.pow(side, maxDepth-depth);
+		row *= s;
+		col *= s;
+		for (var i=0; i<s; ++i) {
+			for (var j=0; j<s; ++j) {
+				if (0 <= row+i && row+i < maxDim && 0 <= col+j && col+j < maxDim) {
+				if (value == 0) value = 0;
+					stuff[row+i][col+j] = value;
+///					console.log((row+i)+', '+(col+j)+' ' +value);;;
+				}
+			}
+		}
+	}
+	
+	function getPixel(row, col, depth) {
+	// Reads 'pixel' at a particular row/col.
+		var s = Math.pow(side, maxDepth-depth);
+		row *= s;
+		col *= s;
+		if (0 <= row && row < maxDim && 0 <= col && col < maxDim) {
+			return stuff[row][col];
+		} else {
+			return 'black';
+		}
+	}
+	
+	resize();
+	redraw();
+
+	window.addEventListener('resize', resizeListener);
+	
+	function resize() {
+		var div = document.getElementById('div');
+		canvas.width = div.clientWidth;
+		canvas.height = div.clientHeight;
+	}
+	
+	function redraw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.save();
+		ctx.scale(3, 3);
+		for (var i=0; i<maxDim; ++i) {
+			for (var j=0; j<maxDim; ++j) {
+				ctx.fillStyle = stuff[i][j];
+				ctx.fillRect(j, i, 1, 1);
+				ctx.lineWidth = 0.05;
+				ctx.strokeRect(j, i, 1, 1);
+			}
+		}
+		ctx.restore();
+	}
+	
+	function resizeListener(e) {
+		resize();
+		redraw();
+	}
+
+}
+
+	</script>
+</body>
+</html>
