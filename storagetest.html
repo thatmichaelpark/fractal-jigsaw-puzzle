@@ -31,11 +31,8 @@
 	</div>
 	<div id="datadiv">
 		<div>
-			Level: {{level}}
-		</div>
-		<div>
+			{{path}}
 			<input type="number" ng-model="ii">
-			<input type="number" ng-model="jj">
 			<button ng-click="zoomInClick()">Zoom In</button>
 			<button ng-click="zoomOutClick()">Zoom Out</button>
 		</div>
@@ -44,9 +41,8 @@
 "use strict"
 angular.module('testApp', []).controller('Ctrl', function ($scope) {
 
-$scope.level = 0;
 $scope.ii = 0;
-$scope.jj = 0;
+$scope.path = [0];
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -55,14 +51,8 @@ window.addEventListener('resize', resizeListener);
 var worker = new Worker('worker.js');
 
 var thingsToDraw = [];
-var currentLevel = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
-console.log(JSON.stringify(currentLevel, function (key, value) {
-	if (key == 'parent') {
-		return value == null ? null : {levelNo: value.levelNo, ii: value.ii, jj: value.jj};
-	} else {
-		return value;
-	}
-}));;;
+var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
+var currentLevel = levelPath($scope.path);
 blah();
 
 canvas.onclick = function (e) {
@@ -70,8 +60,8 @@ canvas.onclick = function (e) {
 		var mouseX = e.clientX-canvas.width/2;
 		var mouseY = e.clientY-canvas.height/2;
 		if (thingsToDraw[i].hitTest(mouseX, mouseY)) {
-			thingsToDraw[i].cx = mouseX;
-			thingsToDraw[i].cy = mouseY;
+			thingsToDraw[i].cx = thingsToDraw[i].fx;
+			thingsToDraw[i].cy = thingsToDraw[i].fy;
 			var temp = thingsToDraw[i];
 			thingsToDraw.splice(i, 1);
 			thingsToDraw.push(temp);
@@ -82,41 +72,51 @@ canvas.onclick = function (e) {
 }
 
 $scope.zoomInClick = function() {
-	var children = currentLevel.children || [];
-	for (var i=0; i<children.length; ++i) {
-		if (children[i].ii == $scope.ii && children[i].jj == $scope.jj) {
-			currentLevel = children[i];
-			blah();
-			return;
-		}
+	$scope.path.push($scope.ii);
+	currentLevel = levelPath($scope.path);
+	if (currentLevel != null) {
+		blah();
+	} else {
+		alert('Could not find');;;
 	}
-	alert('Could not find');;;
 }
 
 $scope.zoomOutClick = function() {
-	if (currentLevel.parent) {
+	if ($scope.path.length > 1) {
 		currentLevel.fullyDrawn = true;;;
-		currentLevel = currentLevel.parent;
+		$scope.path.pop();
+		currentLevel = levelPath($scope.path);
 		blah();
-	} else {
-		alert('Already at top level');
 	}
 }
 
+function levelPath(path) {
+	var level = levelData;
+	for (var i=1; i<path.length; ++i) {
+		level = level.children[path[i]];
+	}
+	return level;
+}
+
 function blah() {
-	$scope.level = currentLevel.levelNo;
 	var children = currentLevel.children || [];
 	var bigPiece = new Piece(4);
 	bigPiece.xorRect(0, 0, bigPiece.wholeSide, bigPiece.wholeSide, 255, 255, 200, 0);
 	bigPiece.makePiece(currentLevel.u0, currentLevel.v0, currentLevel.du, currentLevel.dv);
 	bigPiece.outline();
 	bigPiece.toImg();
+	bigPiece.cx = 0;
+	bigPiece.cy = 0;
 	thingsToDraw = [bigPiece];
+
 	for (var i=0; i<children.length; ++i) {
 		var c = children[i];
+		if (c == null) {
+			continue;
+		}
 		var piece = new Piece(3);
-		var color = c.children ? 255 : 0;
-		piece.xorRect(0, 0, piece.wholeSide, piece.wholeSide, color, color, color, 0);
+		var color = c.children ? 210 : 0;
+		piece.xorRect(0, 0, piece.wholeSide, piece.wholeSide, 255, color, color, 0);
 		piece.makePiece(c.u0, c.v0, c.du, c.dv);
 		piece.inoutline();
 		piece.toImg();
@@ -126,6 +126,8 @@ function blah() {
 		piece.dim = c.dim / piece.pieceSide * piece.wholeSide;
 		piece.cx = c.cx;
 		piece.cy = c.cy;
+		piece.fx = c.fx;
+		piece.fy = c.fy;
 		piece.fullyDrawn = c.fullyDrawn;
 		thingsToDraw.push(piece);
 	}
@@ -181,19 +183,15 @@ function resizeListener(e) {
 	resize();
 }
 
-function createData(re, im, zoom, maxLevel) {
+function createData(re, im, zoom, levels) {
 	var re0 = re - 2/zoom;
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createDataHelper(0, null, 0, 0, re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, maxLevel);
+	return createDataHelper(re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, levels);
 	
-	function createDataHelper(levelNo, parent, ii, jj, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, rot, maxLevel) {
+	function createDataHelper(re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, levels) {
 		var levelData = {
-			parent: parent,
-			levelNo: levelNo,
-			ii: ii,
-			jj: jj,
 			re0: re0,
 			im0: im0,
 			dre: dre,
@@ -202,12 +200,14 @@ function createData(re, im, zoom, maxLevel) {
 			v0: v0,
 			du: du,
 			dv: dv,
-			cx: cx,
+			cx: cx,		// current position
 			cy: cy,
+			fx: fx,		// final position
+			fy: fy,
 			rot: rot,
 		};
 		
-		if (levelNo == maxLevel) {
+		if (levels == 0) {
 			levelData.fullyDrawn = true;
 			levelData.children = null;
 		} else {
@@ -224,14 +224,17 @@ function createData(re, im, zoom, maxLevel) {
 			for (var i=-1; i<=5; ++i) {
 				var v = v0 + i * dv;
 				var im = im0 + i * dim;
-				cy = (i - 2) * 125;
+				fy = (i - 2) * 125;
 				for (var j=-1; j<=5; ++j) {
 					var u = u0 + j * dv;
 					var re = re0 + j * dre;
-					cx = (j - 2) * 125;
+					fx = (j - 2) * 125;
+					cx = (Math.random() - 0.5) * 7 * 125;
+					cy = (Math.random() - 0.5) * 7 * 125;
 					if (piece.get(piece.padding+j, piece.padding+i).a) {
-						levelData.children.push(createDataHelper(levelNo+1, levelData, i, j,
-							re, im, dre, dim, u, v, du, dv, cx, cy, 0, maxLevel));
+						levelData.children.push(createDataHelper(re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, rot, levels-1));
+					} else {
+						levelData.children.push(null);
 					}
 				}
 			}
