@@ -36,13 +36,16 @@
 			<button ng-click="zoomInClick()">Zoom In</button>
 			<button ng-click="zoomOutClick()">Zoom Out</button>
 		</div>
+		<div>
+			<button ng-click="saveClick()">Save</button>
+		</div>
 	</div>	<script src="piece.js"></script>
 	<script>
 "use strict"
 angular.module('testApp', []).controller('Ctrl', function ($scope) {
 
 $scope.ii = 0;
-$scope.path = [0];
+$scope.path = [];
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -56,12 +59,12 @@ var currentLevel = levelPath($scope.path);
 blah();
 
 canvas.onclick = function (e) {
-	for (var i=thingsToDraw.length; --i>=0;) {
+	for (var i=thingsToDraw.length; --i>0;) {
 		var mouseX = e.clientX-canvas.width/2;
 		var mouseY = e.clientY-canvas.height/2;
 		if (thingsToDraw[i].hitTest(mouseX, mouseY)) {
-			thingsToDraw[i].cx = thingsToDraw[i].fx;
-			thingsToDraw[i].cy = thingsToDraw[i].fy;
+			thingsToDraw[i].levelData.cx = thingsToDraw[i].levelData.fx;
+			thingsToDraw[i].levelData.cy = thingsToDraw[i].levelData.fy;
 			var temp = thingsToDraw[i];
 			thingsToDraw.splice(i, 1);
 			thingsToDraw.push(temp);
@@ -82,7 +85,7 @@ $scope.zoomInClick = function() {
 }
 
 $scope.zoomOutClick = function() {
-	if ($scope.path.length > 1) {
+	if ($scope.path.length > 0) {
 		currentLevel.fullyDrawn = true;;;
 		$scope.path.pop();
 		currentLevel = levelPath($scope.path);
@@ -92,7 +95,7 @@ $scope.zoomOutClick = function() {
 
 function levelPath(path) {
 	var level = levelData;
-	for (var i=1; i<path.length; ++i) {
+	for (var i=0; i<path.length; ++i) {
 		level = level.children[path[i]];
 	}
 	return level;
@@ -105,8 +108,7 @@ function blah() {
 	bigPiece.makePiece(currentLevel.u0, currentLevel.v0, currentLevel.du, currentLevel.dv);
 	bigPiece.outline();
 	bigPiece.toImg();
-	bigPiece.cx = 0;
-	bigPiece.cy = 0;
+	bigPiece.levelData = {cx: 0, cy: 0};
 	thingsToDraw = [bigPiece];
 
 	for (var i=0; i<children.length; ++i) {
@@ -115,44 +117,56 @@ function blah() {
 			continue;
 		}
 		var piece = new Piece(3);
-		var color = c.children ? 210 : 0;
+		piece.levelData = c;
+		var color = c.children ? 210 : 100;
 		piece.xorRect(0, 0, piece.wholeSide, piece.wholeSide, 255, color, color, 0);
 		piece.makePiece(c.u0, c.v0, c.du, c.dv);
 		piece.inoutline();
 		piece.toImg();
-		piece.re = c.re0 - c.dre / piece.pieceSide * piece.padding;
-		piece.im = c.im0 - c.dim / piece.pieceSide * piece.padding;
-		piece.dre = c.dre / piece.pieceSide * piece.wholeSide;
-		piece.dim = c.dim / piece.pieceSide * piece.wholeSide;
-		piece.cx = c.cx;
-		piece.cy = c.cy;
-		piece.fx = c.fx;
-		piece.fy = c.fy;
-		piece.fullyDrawn = c.fullyDrawn;
 		thingsToDraw.push(piece);
 	}
-	resize();
+	setTimeout(resize, 0); // hack!
+	
 	var i = 0;
 	i = getNextThing(i);
 	if (i >= 0) {
-		worker.postMessage({re: thingsToDraw[i].re, im: thingsToDraw[i].im, dre: thingsToDraw[i].dre, dim: thingsToDraw[i].dim, w:thingsToDraw[i].wholeSide, h:thingsToDraw[i].wholeSide, data:thingsToDraw[i].imageData.data});
+		piece = thingsToDraw[i];
+		var ld = piece.levelData;
+		var re = ld.re0 - ld.dre / piece.pieceSide * piece.padding;
+		var im = ld.im0 - ld.dim / piece.pieceSide * piece.padding;
+		var dre = ld.dre / piece.pieceSide * piece.wholeSide;
+		var dim = ld.dim / piece.pieceSide * piece.wholeSide;
+		worker.postMessage({path: ld.path, re: re, im: im, dre: dre, dim: dim, w: piece.wholeSide, h: piece.wholeSide, data: piece.imageData.data});
+		console.log('>', ld.path);;;
 	}
 
 	worker.onmessage = function (event) {
-		var p = event.data.progress;
-		thingsToDraw[i].imageData = new ImageData(event.data.data, thingsToDraw[i].wholeSide, thingsToDraw[i].wholeSide);
-		thingsToDraw[i].toImg();
+		console.log('<', event.data.path);;;
+		for (var j=1; j<thingsToDraw.length; ++j) {
+			var ld = thingsToDraw[j].levelData;
+			if (JSON.stringify(ld.path) == JSON.stringify(event.data.path)) {
+				thingsToDraw[j].imageData = new ImageData(event.data.data, thingsToDraw[j].wholeSide, thingsToDraw[j].wholeSide);
+				thingsToDraw[j].toImg();
+				console.log('drawn');;;
+			}
+		}
 		i = getNextThing(i);
 		if (i >= 0) {
 			piece = thingsToDraw[i];
-			worker.postMessage({re: thingsToDraw[i].re, im: thingsToDraw[i].im, dre: thingsToDraw[i].dre, dim: thingsToDraw[i].dim, w:thingsToDraw[i].wholeSide, h:thingsToDraw[i].wholeSide, data:thingsToDraw[i].imageData.data});
+			var ld = piece.levelData;
+		console.log('>', ld.path);;;
+			var re = ld.re0 - ld.dre / piece.pieceSide * piece.padding;
+			var im = ld.im0 - ld.dim / piece.pieceSide * piece.padding;
+			var dre = ld.dre / piece.pieceSide * piece.wholeSide;
+			var dim = ld.dim / piece.pieceSide * piece.wholeSide;
+			worker.postMessage({path: ld.path, re: re, im: im, dre: dre, dim: dim, w: piece.wholeSide, h: piece.wholeSide, data: piece.imageData.data});
 		}
-		resize();
+		setTimeout(resize, 0); // hack!
 	};
 	
 	function getNextThing(i) {
 		while (++i < thingsToDraw.length) {
-			if (thingsToDraw[i].fullyDrawn) {
+			if (thingsToDraw[i].levelData.fullyDrawn) {
 				return i;
 			}
 		}
@@ -170,7 +184,8 @@ function resize() {
 }
 
 function redraw() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.fillStyle = 'teal';
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.save();
 	ctx.translate(canvas.width/2, canvas.height/2);
 	for (var i=0; i<thingsToDraw.length; ++i) {
@@ -188,10 +203,11 @@ function createData(re, im, zoom, levels) {
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createDataHelper(re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, levels);
+	return createDataHelper([], re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, levels);
 	
-	function createDataHelper(re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, levels) {
+	function createDataHelper(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, levels) {
 		var levelData = {
+			path: path.slice(),	// *copy* of path
 			re0: re0,
 			im0: im0,
 			dre: dre,
@@ -232,7 +248,9 @@ function createData(re, im, zoom, levels) {
 					cx = (Math.random() - 0.5) * 7 * 125;
 					cy = (Math.random() - 0.5) * 7 * 125;
 					if (piece.get(piece.padding+j, piece.padding+i).a) {
-						levelData.children.push(createDataHelper(re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, rot, levels-1));
+						path.push(levelData.children.length);
+						levelData.children.push(createDataHelper(path, re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, rot, levels-1));
+						path.pop();
 					} else {
 						levelData.children.push(null);
 					}

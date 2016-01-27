@@ -8,7 +8,7 @@ onmessage = function(event) {
 	var w = event.data.w;
 	var h = event.data.h;
 	set(re, im, dre, dim, data, w, h);
-	postMessage({progress: 100, data: data});
+	postMessage({path: event.data.path, data: data});
 };
 
 var limit = 1023;
@@ -39,9 +39,9 @@ var limit = 1023;
 		var k = 0;
 		var im = im0;
 		for (var i=0; i<h; ++i) {
-			if (i % 10 == 0) {
+//			if (i % 10 == 0) {
 //				postMessage({progress:i/h*100});
-			}
+//			}
 			var re = re0;
 			for (var j=0; j<w; ++j) {
 				if (data[k+3]) {

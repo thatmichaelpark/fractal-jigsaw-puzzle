@@ -34,10 +34,9 @@ Piece.prototype = {
 
 function draw(ctx) {
 	ctx.save();
-	ctx.translate(this.cx, this.cy);
+	ctx.translate(this.levelData.cx, this.levelData.cy);
 //	ctx.rotate(0.2);;;
 	ctx.drawImage(this.img, -this.wholeSide/2, -this.wholeSide/2);
-	
 	ctx.restore();
 }
 
@@ -260,8 +259,8 @@ function get(x, y) {
 }
 
 function hitTest(x, y) {
-	var ix = Math.round(x - this.cx + this.wholeSide / 2);
-	var iy = Math.round(y - this.cy + this.wholeSide / 2);
+	var ix = Math.round(x - this.levelData.cx + this.wholeSide / 2);
+	var iy = Math.round(y - this.levelData.cy + this.wholeSide / 2);
 	if (ix < 0 || ix >= this.wholeSide || iy < 0 || iy >= this.wholeSide) {
 		return false;
 	}
