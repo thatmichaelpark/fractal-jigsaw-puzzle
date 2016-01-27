@@ -45,7 +45,7 @@
 angular.module('testApp', []).controller('Ctrl', function ($scope) {
 
 $scope.ii = 0;
-$scope.path = [];
+$scope.path = [24, 24];
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -127,34 +127,35 @@ function blah() {
 	}
 	setTimeout(resize, 0); // hack!
 	
-	var i = 0;
-	i = getNextThing(i);
-	if (i >= 0) {
-		piece = thingsToDraw[i];
+	var thingsForWorker = [];
+	for (var i=1; i<thingsToDraw.length; ++i) {
+		if (thingsToDraw[i].levelData.fullyDrawn) {
+			thingsForWorker.push(thingsToDraw[i]);
+		}
+	}
+	console.log(thingsForWorker.length);;;
+	var iout = 0;
+	if (iout < thingsForWorker.length) {
+		piece = thingsForWorker[iout];
 		var ld = piece.levelData;
 		var re = ld.re0 - ld.dre / piece.pieceSide * piece.padding;
 		var im = ld.im0 - ld.dim / piece.pieceSide * piece.padding;
 		var dre = ld.dre / piece.pieceSide * piece.wholeSide;
 		var dim = ld.dim / piece.pieceSide * piece.wholeSide;
 		worker.postMessage({path: ld.path, re: re, im: im, dre: dre, dim: dim, w: piece.wholeSide, h: piece.wholeSide, data: piece.imageData.data});
-		console.log('>', ld.path);;;
 	}
 
+	var iin = 0;
 	worker.onmessage = function (event) {
-		console.log('<', event.data.path);;;
-		for (var j=1; j<thingsToDraw.length; ++j) {
-			var ld = thingsToDraw[j].levelData;
-			if (JSON.stringify(ld.path) == JSON.stringify(event.data.path)) {
-				thingsToDraw[j].imageData = new ImageData(event.data.data, thingsToDraw[j].wholeSide, thingsToDraw[j].wholeSide);
-				thingsToDraw[j].toImg();
-				console.log('drawn');;;
-			}
+		if (JSON.stringify(thingsForWorker[iin].levelData.path) == JSON.stringify(event.data.path)) {	// hack!
+			thingsForWorker[iin].imageData = new ImageData(event.data.data, thingsForWorker[iin].wholeSide, thingsForWorker[iin].wholeSide);
+			thingsForWorker[iin].toImg();
+			++iin;
 		}
-		i = getNextThing(i);
-		if (i >= 0) {
-			piece = thingsToDraw[i];
+		++iout;
+		if (iout < thingsForWorker.length) {
+			piece = thingsForWorker[iout];
 			var ld = piece.levelData;
-		console.log('>', ld.path);;;
 			var re = ld.re0 - ld.dre / piece.pieceSide * piece.padding;
 			var im = ld.im0 - ld.dim / piece.pieceSide * piece.padding;
 			var dre = ld.dre / piece.pieceSide * piece.wholeSide;
@@ -163,15 +164,6 @@ function blah() {
 		}
 		setTimeout(resize, 0); // hack!
 	};
-	
-	function getNextThing(i) {
-		while (++i < thingsToDraw.length) {
-			if (thingsToDraw[i].levelData.fullyDrawn) {
-				return i;
-			}
-		}
-		return -1;
-	}
 }
 
 
