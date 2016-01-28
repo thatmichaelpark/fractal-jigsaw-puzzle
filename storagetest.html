@@ -60,22 +60,33 @@ var currentLevel = levelPath($scope.path);
 blah();
 
 var draggingPiece = null;
+var selectedPiece = null;
 
 canvas.onmousedown = function (e) {
 	var mouseX = e.clientX - canvas.width/2;
 	var mouseY = e.clientY - canvas.height/2;
 	for (var i=thingsToDraw.length; --i>0;) {
 		if (thingsToDraw[i].hitTest(mouseX, mouseY)) {
+			if (selectedPiece == thingsToDraw[i]) {		// double-click
+				console.log('zoom in');;;
+				break;
+			}
+			selectedPiece = thingsToDraw[i];
+			setTimeout(function () { selectedPiece = null; }, 300);
+			
 			if (event.ctrlKey) {
 				thingsToDraw[i].levelData.cx = thingsToDraw[i].levelData.fx;
 				thingsToDraw[i].levelData.cy = thingsToDraw[i].levelData.fy;
+				thingsToDraw[i].levelData.inPlace = true;
 				var temp = thingsToDraw[i];
 				thingsToDraw.splice(i, 1);
 				thingsToDraw.splice(1, 0, temp);
+				checkLevelDone();
 			} else {
 				draggingPiece = thingsToDraw[i];
 				thingsToDraw.splice(i, 1);			// move touched piece
 				thingsToDraw.push(draggingPiece);	//  to top
+				thingsToDraw[i].levelData.inPlace = false;
 				draggingPiece.levelData.cx = mouseX;
 				draggingPiece.levelData.cy = mouseY;
 			}
@@ -109,10 +120,12 @@ canvas.onmouseup = function (e) {
 				draggingPiece.levelData.cy = draggingPiece.levelData.fy;
 				thingsToDraw.pop();							// move piece
 				thingsToDraw.splice(1, 0, draggingPiece);	//  to bottom
+				draggingPiece.levelData.inPlace = true;
 		}
 		redraw();
 		draggingPiece = null;
 		event.preventDefault();
+		checkLevelDone();
 	}
 }
 
@@ -126,12 +139,24 @@ $scope.zoomInClick = function() {
 	}
 }
 
-$scope.zoomOutClick = function() {
+$scope.zoomOutClick = zoomOut;
+
+function zoomOut() {
 	if ($scope.path.length > 0) {
 		currentLevel.fullyDrawn = true;;;
 		$scope.path.pop();
 		currentLevel = levelPath($scope.path);
 		blah();
+	}
+}
+
+function checkLevelDone() {
+	var allDone = true;
+	for (var i=1; i<thingsToDraw.length; ++i) {
+		allDone &= thingsToDraw[i].levelData.inPlace;
+	}
+	if (allDone) {
+		zoomOut();
 	}
 }
 
@@ -264,6 +289,7 @@ function createData(re, im, zoom, levels) {
 			fx: fx,		// final position
 			fy: fy,
 			rot: rot,
+			inPlace: false
 		};
 		
 		if (levels == 0) {
