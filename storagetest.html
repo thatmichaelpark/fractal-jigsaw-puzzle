@@ -50,6 +50,7 @@ $scope.path = [24, 24];
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 window.addEventListener('resize', resizeListener);
+resize();
 
 var worker = new Worker('worker.js');
 
@@ -58,19 +59,60 @@ var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
 var currentLevel = levelPath($scope.path);
 blah();
 
-canvas.onclick = function (e) {
+var draggingPiece = null;
+
+canvas.onmousedown = function (e) {
+	var mouseX = e.clientX - canvas.width/2;
+	var mouseY = e.clientY - canvas.height/2;
 	for (var i=thingsToDraw.length; --i>0;) {
-		var mouseX = e.clientX-canvas.width/2;
-		var mouseY = e.clientY-canvas.height/2;
 		if (thingsToDraw[i].hitTest(mouseX, mouseY)) {
-			thingsToDraw[i].levelData.cx = thingsToDraw[i].levelData.fx;
-			thingsToDraw[i].levelData.cy = thingsToDraw[i].levelData.fy;
-			var temp = thingsToDraw[i];
-			thingsToDraw.splice(i, 1);
-			thingsToDraw.splice(1, 0, temp);
+			if (event.ctrlKey) {
+				thingsToDraw[i].levelData.cx = thingsToDraw[i].levelData.fx;
+				thingsToDraw[i].levelData.cy = thingsToDraw[i].levelData.fy;
+				var temp = thingsToDraw[i];
+				thingsToDraw.splice(i, 1);
+				thingsToDraw.splice(1, 0, temp);
+			} else {
+				draggingPiece = thingsToDraw[i];
+				thingsToDraw.splice(i, 1);			// move touched piece
+				thingsToDraw.push(draggingPiece);	//  to top
+				draggingPiece.levelData.cx = mouseX;
+				draggingPiece.levelData.cy = mouseY;
+			}
 			redraw();
+			event.preventDefault();
 			break;
 		}
+	}
+}
+
+canvas.onmousemove = function (e) {
+	if (draggingPiece != null) {
+		var mouseX = e.clientX - canvas.width/2;
+		var mouseY = e.clientY - canvas.height/2;
+		draggingPiece.levelData.cx = mouseX;
+		draggingPiece.levelData.cy = mouseY;
+		redraw();
+		event.preventDefault();
+	}
+}
+
+canvas.onmouseup = function (e) {
+	if (draggingPiece != null) {
+		var mouseX = e.clientX - canvas.width/2;
+		var mouseY = e.clientY - canvas.height/2;
+		draggingPiece.levelData.cx = mouseX;
+		draggingPiece.levelData.cy = mouseY;
+		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
+			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
+				draggingPiece.levelData.cx = draggingPiece.levelData.fx;
+				draggingPiece.levelData.cy = draggingPiece.levelData.fy;
+				thingsToDraw.pop();							// move piece
+				thingsToDraw.splice(1, 0, draggingPiece);	//  to bottom
+		}
+		redraw();
+		draggingPiece = null;
+		event.preventDefault();
 	}
 }
 
@@ -125,7 +167,7 @@ function blah() {
 		piece.toImg();
 		thingsToDraw.push(piece);
 	}
-	setTimeout(resize, 0); // hack!
+	redraw();
 	
 	var thingsForWorker = [];
 	for (var i=1; i<thingsToDraw.length; ++i) {
@@ -133,7 +175,6 @@ function blah() {
 			thingsForWorker.push(thingsToDraw[i]);
 		}
 	}
-	console.log(thingsForWorker.length);;;
 	var iout = 0;
 	if (iout < thingsForWorker.length) {
 		piece = thingsForWorker[iout];
@@ -162,7 +203,7 @@ function blah() {
 			var dim = ld.dim / piece.pieceSide * piece.wholeSide;
 			worker.postMessage({path: ld.path, re: re, im: im, dre: dre, dim: dim, w: piece.wholeSide, h: piece.wholeSide, data: piece.imageData.data});
 		}
-		setTimeout(resize, 0); // hack!
+		redraw();
 	};
 }
 
@@ -175,7 +216,16 @@ function resize() {
 	redraw();
 }
 
+var redrawing = false;
+
 function redraw() {
+	if (!redrawing) {
+		requestAnimationFrame(_redraw);
+		redrawing = true;
+	}
+}
+
+function _redraw() {
 	ctx.fillStyle = 'teal';
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.save();
@@ -184,6 +234,7 @@ function redraw() {
 		thingsToDraw[i].draw(ctx);
 	}
 	ctx.restore();
+	redrawing = false;
 }
 
 function resizeListener(e) {
