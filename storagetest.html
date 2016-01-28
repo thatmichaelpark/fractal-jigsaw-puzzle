@@ -67,7 +67,7 @@ canvas.onclick = function (e) {
 			thingsToDraw[i].levelData.cy = thingsToDraw[i].levelData.fy;
 			var temp = thingsToDraw[i];
 			thingsToDraw.splice(i, 1);
-			thingsToDraw.push(temp);
+			thingsToDraw.splice(1, 0, temp);
 			redraw();
 			break;
 		}
