@@ -54,7 +54,9 @@ resize();
 
 var worker = new Worker('worker.js');
 
-var thingsToDraw = [];
+var piecesToDraw = [];
+var backgroundPieces = [null, null];		// up to two background pieces
+
 var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
 var currentLevel = levelPath($scope.path);
 blah();
@@ -65,28 +67,30 @@ var selectedPiece = null;
 canvas.onmousedown = function (e) {
 	var mouseX = e.clientX - canvas.width/2;
 	var mouseY = e.clientY - canvas.height/2;
-	for (var i=thingsToDraw.length; --i>0;) {
-		if (thingsToDraw[i].hitTest(mouseX, mouseY)) {
-			if (selectedPiece == thingsToDraw[i]) {		// double-click
+	for (var i=piecesToDraw.length; --i>=0;) {
+		if (piecesToDraw[i].hitTest(mouseX, mouseY)) {
+			if (selectedPiece == piecesToDraw[i]) {		// double-click
 				console.log('zoom in');;;
 				break;
 			}
-			selectedPiece = thingsToDraw[i];
+			selectedPiece = piecesToDraw[i];
 			setTimeout(function () { selectedPiece = null; }, 300);
 			
 			if (event.ctrlKey) {
-				thingsToDraw[i].levelData.cx = thingsToDraw[i].levelData.fx;
-				thingsToDraw[i].levelData.cy = thingsToDraw[i].levelData.fy;
-				thingsToDraw[i].levelData.inPlace = true;
-				var temp = thingsToDraw[i];
-				thingsToDraw.splice(i, 1);
-				thingsToDraw.splice(1, 0, temp);
-				checkLevelDone();
+				piecesToDraw[i].levelData.cx = piecesToDraw[i].levelData.fx;
+				piecesToDraw[i].levelData.cy = piecesToDraw[i].levelData.fy;
+				piecesToDraw[i].levelData.inPlace = true;
+				var temp = piecesToDraw[i];
+				piecesToDraw.splice(i, 1);			// move piece
+				piecesToDraw.unshift(temp);			//  to bottom
+				if (checkLevelDone()) {
+					zoomOut();
+				}
 			} else {
-				draggingPiece = thingsToDraw[i];
-				thingsToDraw.splice(i, 1);			// move touched piece
-				thingsToDraw.push(draggingPiece);	//  to top
-				thingsToDraw[i].levelData.inPlace = false;
+				draggingPiece = piecesToDraw[i];
+				piecesToDraw.splice(i, 1);			// move touched piece
+				piecesToDraw.push(draggingPiece);	//  to top
+				draggingPiece.levelData.inPlace = false;
 				draggingPiece.levelData.cx = mouseX;
 				draggingPiece.levelData.cy = mouseY;
 			}
@@ -118,14 +122,16 @@ canvas.onmouseup = function (e) {
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
 				draggingPiece.levelData.cx = draggingPiece.levelData.fx;
 				draggingPiece.levelData.cy = draggingPiece.levelData.fy;
-				thingsToDraw.pop();							// move piece
-				thingsToDraw.splice(1, 0, draggingPiece);	//  to bottom
+				piecesToDraw.pop();							// move piece
+				piecesToDraw.unshift(draggingPiece);		//  to bottom
 				draggingPiece.levelData.inPlace = true;
 		}
 		redraw();
 		draggingPiece = null;
 		event.preventDefault();
-		checkLevelDone();
+		if (checkLevelDone()) {
+			zoomOut();
+		}
 	}
 }
 
@@ -141,23 +147,13 @@ $scope.zoomInClick = function() {
 
 $scope.zoomOutClick = zoomOut;
 
-function zoomOut() {
-	if ($scope.path.length > 0) {
-		currentLevel.fullyDrawn = true;;;
-		$scope.path.pop();
-		currentLevel = levelPath($scope.path);
-		blah();
-	}
-}
-
 function checkLevelDone() {
-	var allDone = true;
-	for (var i=1; i<thingsToDraw.length; ++i) {
-		allDone &= thingsToDraw[i].levelData.inPlace;
+	for (var i=1; i<piecesToDraw.length; ++i) {
+		if (!piecesToDraw[i].levelData.inPlace) {
+			return false;
+		}
 	}
-	if (allDone) {
-		zoomOut();
-	}
+	return true;
 }
 
 function levelPath(path) {
@@ -168,7 +164,7 @@ function levelPath(path) {
 	return level;
 }
 
-function blah() {
+function blah(level) {
 	var children = currentLevel.children || [];
 	var bigPiece = new Piece(4);
 	bigPiece.xorRect(0, 0, bigPiece.wholeSide, bigPiece.wholeSide, 255, 255, 200, 0);
@@ -176,7 +172,8 @@ function blah() {
 	bigPiece.outline();
 	bigPiece.toImg();
 	bigPiece.levelData = {cx: 0, cy: 0};
-	thingsToDraw = [bigPiece];
+	backgroundPieces[0] = bigPiece;
+	piecesToDraw = [];
 
 	for (var i=0; i<children.length; ++i) {
 		var c = children[i];
@@ -190,19 +187,27 @@ function blah() {
 		piece.makePiece(c.u0, c.v0, c.du, c.dv);
 		piece.inoutline();
 		piece.toImg();
-		thingsToDraw.push(piece);
+		piecesToDraw.push(piece);
 	}
 	redraw();
 	
-	var thingsForWorker = [];
-	for (var i=1; i<thingsToDraw.length; ++i) {
-		if (thingsToDraw[i].levelData.fullyDrawn) {
-			thingsForWorker.push(thingsToDraw[i]);
+	var piecesForWorker = [];
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		piecesToDraw[i].rendered = false;
+		if (piecesToDraw[i].levelData.needsRendering) {
+			piecesToDraw[i].randomizer = Math.random();
+			if (piecesToDraw[i].levelData == level) {
+				console.log('priority!');;;
+				piecesToDraw[i].randomizer = -1;
+			}
+			piecesForWorker.push(piecesToDraw[i]);
 		}
 	}
+	piecesForWorker.sort(function (a, b) { return a.randomizer - b.randomizer; });
+	console.log(piecesForWorker);;;
 	var iout = 0;
-	if (iout < thingsForWorker.length) {
-		piece = thingsForWorker[iout];
+	if (iout < piecesForWorker.length) {
+		piece = piecesForWorker[iout];
 		var ld = piece.levelData;
 		var re = ld.re0 - ld.dre / piece.pieceSide * piece.padding;
 		var im = ld.im0 - ld.dim / piece.pieceSide * piece.padding;
@@ -213,14 +218,15 @@ function blah() {
 
 	var iin = 0;
 	worker.onmessage = function (event) {
-		if (JSON.stringify(thingsForWorker[iin].levelData.path) == JSON.stringify(event.data.path)) {	// hack!
-			thingsForWorker[iin].imageData = new ImageData(event.data.data, thingsForWorker[iin].wholeSide, thingsForWorker[iin].wholeSide);
-			thingsForWorker[iin].toImg();
+		if (JSON.stringify(piecesForWorker[iin].levelData.path) == JSON.stringify(event.data.path)) {	// hack!
+			piecesForWorker[iin].imageData = new ImageData(event.data.data, piecesForWorker[iin].wholeSide, piecesForWorker[iin].wholeSide);
+			piecesForWorker[iin].toImg();
+			piecesForWorker[iin].rendered = true;
 			++iin;
 		}
 		++iout;
-		if (iout < thingsForWorker.length) {
-			piece = thingsForWorker[iout];
+		if (iout < piecesForWorker.length) {
+			piece = piecesForWorker[iout];
 			var ld = piece.levelData;
 			var re = ld.re0 - ld.dre / piece.pieceSide * piece.padding;
 			var im = ld.im0 - ld.dim / piece.pieceSide * piece.padding;
@@ -250,16 +256,97 @@ function redraw() {
 	}
 }
 
-function _redraw() {
+var displayMode = 'normal';
+var altPiecesToDraw = [];
+
+var zoomOutState = 0;
+var zoomOutStartTime;
+
+function zoomOut() {
+	if ($scope.path.length > 0) {
+		currentLevel.needsRendering = checkLevelDone();
+		displayMode = 'zoomout';
+		zoomOutState = 0;
+	}
+}
+
+var altScale, altX, altY, altLevel;
+
+function _redraw(ms) {
+	redrawing = false;
+	if (displayMode == 'zoomout') {
+		var destX = currentLevel.cx;
+		var destY = currentLevel.cy;
+		switch (zoomOutState) {
+			case 0:
+				zoomOutStartTime = ms;
+				zoomOutState = 1;
+				altLevel = currentLevel;
+				break;
+			case 1:
+				var t = ms - zoomOutStartTime;
+				if (t > 500) {
+					zoomOutState = 2;
+					altPiecesToDraw = piecesToDraw;
+					piecesToDraw = [];
+					backgroundPieces = [null, null];
+				}
+				break;
+			case 2:
+				var t = ms - zoomOutStartTime - 500;
+				if (t > 1500) {
+					t = 1500;
+					zoomOutState = 3;
+				}
+				var s = t / 1500;			// 0..1
+				altScale = 1 - s * 0.8;		// 1..0.2
+				altX = destX * s;
+				altY = destY * s;
+				break;
+			case 3:
+				altScale = 0.2;
+				altX = destX;
+				altY = destY;
+				$scope.path.pop();
+				currentLevel = levelPath($scope.path);
+				blah(altLevel);
+				zoomOutState = 4;
+				break;
+			case 4:
+				for (var i=0; i<piecesToDraw.length; ++i) {
+					if (piecesToDraw[i].levelData == altLevel && piecesToDraw[i].rendered) {
+						altPiecesToDraw = [];
+						displayMode = 'normal';
+						console.log('done');;;
+					}
+				}
+				break;
+		}
+		redraw();
+	}
+
 	ctx.fillStyle = 'teal';
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.save();
 	ctx.translate(canvas.width/2, canvas.height/2);
-	for (var i=0; i<thingsToDraw.length; ++i) {
-		thingsToDraw[i].draw(ctx);
+	for (var i=0; i<2; ++i) {
+		if (backgroundPieces[i] != null) {
+			backgroundPieces[i].draw(ctx);
+		}
 	}
+
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		piecesToDraw[i].draw(ctx);
+	}
+
+	ctx.translate(altX, altY);
+	ctx.scale(altScale, altScale);
+	for (var i=0; i<altPiecesToDraw.length; ++i) {
+		altPiecesToDraw[i].draw(ctx);
+	}
+
 	ctx.restore();
-	redrawing = false;
+	
 }
 
 function resizeListener(e) {
@@ -293,10 +380,10 @@ function createData(re, im, zoom, levels) {
 		};
 		
 		if (levels == 0) {
-			levelData.fullyDrawn = true;
+			levelData.needsRendering = true;
 			levelData.children = null;
 		} else {
-			levelData.fullyDrawn = false;
+			levelData.needsRendering = false;
 			levelData.children = [];
 
 			var piece = new Piece(1);

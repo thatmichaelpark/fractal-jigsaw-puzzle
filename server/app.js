@@ -21,8 +21,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 //app.use(express.static(path.join('C:/Users/Michael/Dropbox/fractaljigsaw/', '')));
-//app.use(express.static(path.join('f:/michael/my documents/dropbox/fractaljigsaw/', '')));
-app.use(express.static(path.join('c:/users/administrator.tech1/dropbox/fractaljigsaw/', '')));
+app.use(express.static(path.join('f:/michael/my documents/dropbox/fractaljigsaw/', '')));
+//app.use(express.static(path.join('c:/users/administrator.tech1/dropbox/fractaljigsaw/', '')));
 
 app.use('/', routes);
 app.use('/users', users);
