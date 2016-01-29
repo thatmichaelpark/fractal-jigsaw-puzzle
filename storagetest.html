@@ -145,7 +145,10 @@ $scope.zoomInClick = function() {
 	}
 }
 
-$scope.zoomOutClick = zoomOut;
+$scope.zoomOutClick = function () {
+	zoomOut();
+	redraw();
+}
 
 function checkLevelDone() {
 	for (var i=1; i<piecesToDraw.length; ++i) {
@@ -197,14 +200,13 @@ function blah(level) {
 		if (piecesToDraw[i].levelData.needsRendering) {
 			piecesToDraw[i].randomizer = Math.random();
 			if (piecesToDraw[i].levelData == level) {
-				console.log('priority!');;;
 				piecesToDraw[i].randomizer = -1;
 			}
 			piecesForWorker.push(piecesToDraw[i]);
 		}
 	}
 	piecesForWorker.sort(function (a, b) { return a.randomizer - b.randomizer; });
-	console.log(piecesForWorker);;;
+
 	var iout = 0;
 	if (iout < piecesForWorker.length) {
 		piece = piecesForWorker[iout];
@@ -218,11 +220,13 @@ function blah(level) {
 
 	var iin = 0;
 	worker.onmessage = function (event) {
-		if (JSON.stringify(piecesForWorker[iin].levelData.path) == JSON.stringify(event.data.path)) {	// hack!
-			piecesForWorker[iin].imageData = new ImageData(event.data.data, piecesForWorker[iin].wholeSide, piecesForWorker[iin].wholeSide);
-			piecesForWorker[iin].toImg();
-			piecesForWorker[iin].rendered = true;
-			++iin;
+		if (iin < piecesForWorker.length) {	// just in case level changed in the middle
+			if (JSON.stringify(piecesForWorker[iin].levelData.path) == JSON.stringify(event.data.path)) {	// hack!
+				piecesForWorker[iin].imageData = new ImageData(event.data.data, piecesForWorker[iin].wholeSide, piecesForWorker[iin].wholeSide);
+				piecesForWorker[iin].toImg();
+				piecesForWorker[iin].rendered = true;
+				++iin;
+			}
 		}
 		++iout;
 		if (iout < piecesForWorker.length) {
@@ -257,7 +261,7 @@ function redraw() {
 }
 
 var displayMode = 'normal';
-var altPiecesToDraw = [];
+var zoPiecesToDraw = [];
 
 var zoomOutState = 0;
 var zoomOutStartTime;
@@ -270,7 +274,8 @@ function zoomOut() {
 	}
 }
 
-var altScale, altX, altY, altLevel;
+var zoScale, zoX, zoY, zoLevel;
+var zoWait;
 
 function _redraw(ms) {
 	redrawing = false;
@@ -281,13 +286,25 @@ function _redraw(ms) {
 			case 0:
 				zoomOutStartTime = ms;
 				zoomOutState = 1;
-				altLevel = currentLevel;
+				zoLevel = currentLevel;
 				break;
 			case 1:
 				var t = ms - zoomOutStartTime;
 				if (t > 500) {
 					zoomOutState = 2;
-					altPiecesToDraw = piecesToDraw;
+					console.log(currentLevel.needsRendering);;;
+					if (currentLevel.needsRendering) {
+						zoPiecesToDraw = piecesToDraw;
+						zoWait = true;
+					} else {
+						zoPiecesToDraw = [backgroundPieces[0]];
+						for (var i=0; i<piecesToDraw.length; ++i) {
+							if (piecesToDraw[i].levelData.inPlace) {
+								zoPiecesToDraw.push(piecesToDraw[i]);
+							}
+						}
+						zoWait = false;
+					}
 					piecesToDraw = [];
 					backgroundPieces = [null, null];
 				}
@@ -299,26 +316,30 @@ function _redraw(ms) {
 					zoomOutState = 3;
 				}
 				var s = t / 1500;			// 0..1
-				altScale = 1 - s * 0.8;		// 1..0.2
-				altX = destX * s;
-				altY = destY * s;
+				zoScale = 1 - s * 0.8;		// 1..0.2
+				zoX = destX * s;
+				zoY = destY * s;
 				break;
 			case 3:
-				altScale = 0.2;
-				altX = destX;
-				altY = destY;
+				zoScale = 0.2;
+				zoX = destX;
+				zoY = destY;
 				$scope.path.pop();
 				currentLevel = levelPath($scope.path);
-				blah(altLevel);
+				blah(zoLevel);
 				zoomOutState = 4;
 				break;
 			case 4:
-				for (var i=0; i<piecesToDraw.length; ++i) {
-					if (piecesToDraw[i].levelData == altLevel && piecesToDraw[i].rendered) {
-						altPiecesToDraw = [];
-						displayMode = 'normal';
-						console.log('done');;;
+				if (zoWait) {
+					for (var i=0; i<piecesToDraw.length; ++i) {
+						if (piecesToDraw[i].levelData == zoLevel && piecesToDraw[i].rendered) {
+							zoPiecesToDraw = [];
+							displayMode = 'normal';
+						}
 					}
+				} else {
+					zoPiecesToDraw = [];
+					displayMode = 'normal';
 				}
 				break;
 		}
@@ -339,10 +360,10 @@ function _redraw(ms) {
 		piecesToDraw[i].draw(ctx);
 	}
 
-	ctx.translate(altX, altY);
-	ctx.scale(altScale, altScale);
-	for (var i=0; i<altPiecesToDraw.length; ++i) {
-		altPiecesToDraw[i].draw(ctx);
+	ctx.translate(zoX, zoY);
+	ctx.scale(zoScale, zoScale);
+	for (var i=0; i<zoPiecesToDraw.length; ++i) {
+		zoPiecesToDraw[i].draw(ctx);
 	}
 
 	ctx.restore();
