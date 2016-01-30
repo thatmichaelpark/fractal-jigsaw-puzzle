@@ -55,7 +55,7 @@ resize();
 var worker = new Worker('worker.js');
 
 var piecesToDraw = [];
-var backgroundPieces = [null, null];		// up to two background pieces
+var backgroundPiece = null;
 
 var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
 var currentLevel = levelPath($scope.path);
@@ -70,7 +70,8 @@ canvas.onmousedown = function (e) {
 	for (var i=piecesToDraw.length; --i>=0;) {
 		if (piecesToDraw[i].hitTest(mouseX, mouseY)) {
 			if (selectedPiece == piecesToDraw[i]) {		// double-click
-				console.log('zoom in');;;
+			console.log(selectedPiece.levelData);;;
+				zoomIn(selectedPiece.levelData.path);;;
 				break;
 			}
 			selectedPiece = piecesToDraw[i];
@@ -136,13 +137,15 @@ canvas.onmouseup = function (e) {
 }
 
 $scope.zoomInClick = function() {
-	$scope.path.push($scope.ii);
+	$scope.path.push(ii);
 	currentLevel = levelPath($scope.path);
 	if (currentLevel != null) {
 		blah();
 	} else {
 		alert('Could not find');;;
 	}
+	zoomIn($scope.path);
+	redraw();
 }
 
 $scope.zoomOutClick = function () {
@@ -175,7 +178,7 @@ function blah(level) {
 	bigPiece.outline();
 	bigPiece.toImg();
 	bigPiece.levelData = {cx: 0, cy: 0};
-	backgroundPieces[0] = bigPiece;
+	backgroundPiece = bigPiece;
 	piecesToDraw = [];
 
 	for (var i=0; i<children.length; ++i) {
@@ -252,34 +255,78 @@ function resize() {
 }
 
 var redrawing = false;
+var redrawFunction = normalRedraw;
 
 function redraw() {
 	if (!redrawing) {
-		requestAnimationFrame(_redraw);
 		redrawing = true;
+		requestAnimationFrame(function (ms) {
+			redrawing = false;
+			redrawFunction(ms);
+		});
 	}
 }
 
-var displayMode = 'normal';
-var zoPiecesToDraw = [];
+function normalRedraw(ms) {
+	ctx.save();
+	redrawBackground();
+	redrawPieces();
+	ctx.restore();
+}
 
-var zoomOutState = 0;
-var zoomOutStartTime;
+function redrawBackground() {
+	ctx.fillStyle = 'teal';
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	ctx.translate(canvas.width/2, canvas.height/2);
+	if (backgroundPiece) {
+		backgroundPiece.draw(ctx);
+	}
+}
+
+function redrawPieces() {	
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		piecesToDraw[i].draw(ctx);
+	}
+}
+
+var zoomInStartTime;
+var zoomInState;
+var zoScale, zoX, zoY, zoLevel;
+
+function zoomIn(path) {
+	currentLevel = levelPath(path);
+	displayMode = 'zoomin';
+	zoomInState = 'start';
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		if (JSON.stringify(path) == JSON.stringify(piecesToDraw[i].levelData.path)) {
+			backgroundPieces[1] = piecesToDraw[i];
+			zoScale = 1;
+			zoX = piecesToDraw[i].levelData.cx;
+			zoY = piecesToDraw[i].levelData.cy;
+			piecesToDraw = [];
+			break;
+		}
+	}
+	redraw();
+}
+
+var zoomOutState;;;
 
 function zoomOut() {
 	if ($scope.path.length > 0) {
 		currentLevel.needsRendering = checkLevelDone();
-		displayMode = 'zoomout';
+		redrawFunction = zoomOutRedraw;
 		zoomOutState = 0;
 	}
 }
 
-var zoScale, zoX, zoY, zoLevel;
 var zoWait;
+var zoPiecesToDraw = [];
 
-function _redraw(ms) {
-	redrawing = false;
-	if (displayMode == 'zoomout') {
+var zoomOutStartTime;
+
+
+function zoomOutRedraw(ms) {
 		var destX = currentLevel.cx;
 		var destY = currentLevel.cy;
 		switch (zoomOutState) {
@@ -297,7 +344,7 @@ function _redraw(ms) {
 						zoPiecesToDraw = piecesToDraw;
 						zoWait = true;
 					} else {
-						zoPiecesToDraw = [backgroundPieces[0]];
+						zoPiecesToDraw = [backgroundPiece];
 						for (var i=0; i<piecesToDraw.length; ++i) {
 							if (piecesToDraw[i].levelData.inPlace) {
 								zoPiecesToDraw.push(piecesToDraw[i]);
@@ -306,7 +353,7 @@ function _redraw(ms) {
 						zoWait = false;
 					}
 					piecesToDraw = [];
-					backgroundPieces = [null, null];
+					backgroundPiece = null;
 				}
 				break;
 			case 2:
@@ -339,27 +386,16 @@ function _redraw(ms) {
 					}
 				} else {
 					zoPiecesToDraw = [];
-					displayMode = 'normal';
+					redrawFunction = normalRedraw;
 				}
 				break;
 		}
 		redraw();
-	}
+	
 
-	ctx.fillStyle = 'teal';
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.save();
-	ctx.translate(canvas.width/2, canvas.height/2);
-	for (var i=0; i<2; ++i) {
-		if (backgroundPieces[i] != null) {
-			backgroundPieces[i].draw(ctx);
-		}
-	}
-
-	for (var i=0; i<piecesToDraw.length; ++i) {
-		piecesToDraw[i].draw(ctx);
-	}
-
+redrawBackground();
+redrawPieces();	
 	ctx.translate(zoX, zoY);
 	ctx.scale(zoScale, zoScale);
 	for (var i=0; i<zoPiecesToDraw.length; ++i) {
