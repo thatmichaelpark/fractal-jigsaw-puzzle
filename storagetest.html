@@ -224,7 +224,7 @@ function blah(level) {
 	var iin = 0;
 	worker.onmessage = function (event) {
 		if (iin < piecesForWorker.length) {	// just in case level changed in the middle
-			if (JSON.stringify(piecesForWorker[iin].levelData.path) == JSON.stringify(event.data.path)) {	// hack!
+			if (piecesForWorker[iin].levelData == levelPath(event.data.path)) {
 				piecesForWorker[iin].imageData = new ImageData(event.data.data, piecesForWorker[iin].wholeSide, piecesForWorker[iin].wholeSide);
 				piecesForWorker[iin].toImg();
 				piecesForWorker[iin].rendered = true;
