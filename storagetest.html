@@ -310,100 +310,105 @@ function zoomIn(path) {
 	redraw();
 }
 
-var zoomOutState;;;
-
 function zoomOut() {
 	if ($scope.path.length > 0) {
 		currentLevel.needsRendering = checkLevelDone();
 		redrawFunction = zoomOutRedraw;
-		zoomOutState = 0;
 	}
 }
 
-var zoWait;
-var zoPiecesToDraw = [];
-
-var zoomOutStartTime;
 
 
 function zoomOutRedraw(ms) {
-		var destX = currentLevel.cx;
-		var destY = currentLevel.cy;
-		switch (zoomOutState) {
-			case 0:
-				zoomOutStartTime = ms;
-				zoomOutState = 1;
-				zoLevel = currentLevel;
-				break;
-			case 1:
-				var t = ms - zoomOutStartTime;
-				if (t > 500) {
-					zoomOutState = 2;
-					console.log(currentLevel.needsRendering);;;
-					if (currentLevel.needsRendering) {
-						zoPiecesToDraw = piecesToDraw;
-						zoWait = true;
-					} else {
-						zoPiecesToDraw = [backgroundPiece];
-						for (var i=0; i<piecesToDraw.length; ++i) {
-							if (piecesToDraw[i].levelData.inPlace) {
-								zoPiecesToDraw.push(piecesToDraw[i]);
-							}
-						}
-						zoWait = false;
+	var startTime = ms;
+	var wait;
+	var zoPiecesToDraw = [];
+
+	var destX = currentLevel.cx;
+	var destY = currentLevel.cy;
+
+	var level = currentLevel;
+	
+	var pauseTime = 333;
+	var zoomTime = 1500;
+	
+	redrawFunction = pauseBeforeZoom;
+	drawStuff();
+	
+	function pauseBeforeZoom(ms) {
+		var t = ms - startTime;
+		if (t > pauseTime) {
+			redrawFunction = zoomingOut;
+			if (currentLevel.needsRendering) {
+				zoPiecesToDraw = piecesToDraw;
+				wait = true;
+			} else {
+				zoPiecesToDraw = [backgroundPiece];
+				for (var i=0; i<piecesToDraw.length; ++i) {
+					if (piecesToDraw[i].levelData.inPlace) {
+						zoPiecesToDraw.push(piecesToDraw[i]);
 					}
-					piecesToDraw = [];
-					backgroundPiece = null;
 				}
-				break;
-			case 2:
-				var t = ms - zoomOutStartTime - 500;
-				if (t > 1500) {
-					t = 1500;
-					zoomOutState = 3;
-				}
-				var s = t / 1500;			// 0..1
-				zoScale = 1 - s * 0.8;		// 1..0.2
-				zoX = destX * s;
-				zoY = destY * s;
-				break;
-			case 3:
-				zoScale = 0.2;
-				zoX = destX;
-				zoY = destY;
-				$scope.path.pop();
-				currentLevel = levelPath($scope.path);
-				blah(zoLevel);
-				zoomOutState = 4;
-				break;
-			case 4:
-				if (zoWait) {
-					for (var i=0; i<piecesToDraw.length; ++i) {
-						if (piecesToDraw[i].levelData == zoLevel && piecesToDraw[i].rendered) {
-							zoPiecesToDraw = [];
-							displayMode = 'normal';
-						}
-					}
-				} else {
+				wait = false;
+			}
+			piecesToDraw = [];
+			backgroundPiece = null;
+		}
+		drawStuff();
+	}
+	
+	function zoomingOut(ms) {
+		var t = ms - startTime - pauseTime;
+		if (t > zoomTime) {
+			t = zoomTime;
+			redrawFunction = loadNextLevel;
+		}
+		var s = t / zoomTime;		// 0..1
+		zoScale = 1 - s * 0.8;		// 1..0.2
+		zoX = destX * s;
+		zoY = destY * s;
+		drawStuff();
+	}
+	
+	function loadNextLevel(ms) {
+		zoScale = 0.2;
+		zoX = destX;
+		zoY = destY;
+		$scope.path.pop();
+		currentLevel = levelPath($scope.path);
+		blah(zoLevel);
+		redrawFunction = waitForPiece;
+		drawStuff();
+	}
+	
+	function waitForPiece(ms) {
+		if (wait) {
+			for (var i=0; i<piecesToDraw.length; ++i) {
+				if (piecesToDraw[i].levelData == level && piecesToDraw[i].rendered) {
 					zoPiecesToDraw = [];
 					redrawFunction = normalRedraw;
 				}
-				break;
+			}
+		} else {
+			zoPiecesToDraw = [];
+			redrawFunction = normalRedraw;
 		}
-		redraw();
-	
-
-	ctx.save();
-redrawBackground();
-redrawPieces();	
-	ctx.translate(zoX, zoY);
-	ctx.scale(zoScale, zoScale);
-	for (var i=0; i<zoPiecesToDraw.length; ++i) {
-		zoPiecesToDraw[i].draw(ctx);
+		drawStuff();
 	}
-
-	ctx.restore();
 	
+	function drawStuff() {
+		ctx.save();
+		redrawBackground();
+		redrawPieces();	
+		ctx.translate(zoX, zoY);
+		ctx.scale(zoScale, zoScale);
+		for (var i=0; i<zoPiecesToDraw.length; ++i) {
+			zoPiecesToDraw[i].draw(ctx);
+		}
+
+		ctx.restore();
+		redraw();
+	}
 }
 
 function resizeListener(e) {
