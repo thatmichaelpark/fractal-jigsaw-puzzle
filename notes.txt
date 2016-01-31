@@ -23,4 +23,12 @@ If level is done (all pieces filled in and in place):
 
 If level is not done:
 	Shrink level outline to 1/5 on screen where corresponding upper-level piece will be.
+
 	
+pieces need to be complete before they can be placed
+placed pieces shouldn't be movable
+sound
+offset piece from click point
+build level tree as you go
+disable mouse when zooming
+7x7 at top level
