@@ -63,12 +63,16 @@ blah();
 
 var draggingPiece = null;
 var selectedPiece = null;
+var mouseOffsetX, mouseOffsetY;
 
 canvas.onmousedown = function (e) {
 	var mouseX = e.clientX - canvas.width/2;
 	var mouseY = e.clientY - canvas.height/2;
 	for (var i=piecesToDraw.length; --i>=0;) {
-		if (piecesToDraw[i].hitTest(mouseX, mouseY)) {
+		var ht = piecesToDraw[i].hitTest(mouseX, mouseY);
+		if (ht) {
+			mouseOffsetX = ht.x;
+			mouseOffsetY = ht.y;
 			if (selectedPiece == piecesToDraw[i]) {		// double-click
 				zoomIn(selectedPiece.levelData.path);
 				break;
@@ -87,12 +91,14 @@ canvas.onmousedown = function (e) {
 					zoomOut();
 				}
 			} else {
-				draggingPiece = piecesToDraw[i];
-				piecesToDraw.splice(i, 1);			// move touched piece
-				piecesToDraw.push(draggingPiece);	//  to top
-				draggingPiece.levelData.inPlace = false;
-				draggingPiece.levelData.cx = mouseX;
-				draggingPiece.levelData.cy = mouseY;
+				if (!piecesToDraw[i].levelData.inPlace) {
+					draggingPiece = piecesToDraw[i];
+					piecesToDraw.splice(i, 1);			// move touched piece
+					piecesToDraw.push(draggingPiece);	//  to top
+					draggingPiece.levelData.inPlace = false;
+					draggingPiece.levelData.cx = mouseX + mouseOffsetX;
+					draggingPiece.levelData.cy = mouseY + mouseOffsetY;
+				}
 			}
 			event.preventDefault();
 			break;
@@ -105,8 +111,8 @@ canvas.onmousemove = function (e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2;
 		var mouseY = e.clientY - canvas.height/2;
-		draggingPiece.levelData.cx = mouseX;
-		draggingPiece.levelData.cy = mouseY;
+		draggingPiece.levelData.cx = mouseX + mouseOffsetX;
+		draggingPiece.levelData.cy = mouseY + mouseOffsetY;
 		redraw();
 		event.preventDefault();
 	}
@@ -116,8 +122,8 @@ canvas.onmouseup = function (e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2;
 		var mouseY = e.clientY - canvas.height/2;
-		draggingPiece.levelData.cx = mouseX;
-		draggingPiece.levelData.cy = mouseY;
+		draggingPiece.levelData.cx = mouseX + mouseOffsetX;
+		draggingPiece.levelData.cy = mouseY + mouseOffsetY;
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
 				draggingPiece.levelData.cx = draggingPiece.levelData.fx;
@@ -189,7 +195,7 @@ function blah(priorityLevel) {
 		}
 		var piece = new Piece(3);
 		piece.levelData = c;
-		var color = c.children ? 210 : 100;
+		var color = c.isComplete ? 100 : 210;
 		piece.xorRect(0, 0, piece.wholeSide, piece.wholeSide, 255, color, color, 0);
 		piece.makePiece(c.u0, c.v0, c.du, c.dv);
 		piece.inoutline();
@@ -303,6 +309,7 @@ function zoomInRedrawBlank(ms) {
 	var ziPieceToDraw;
 	var startX, startY;
 	var ziScale, ziX, ziY;
+	var pauseTime = 333;
 	var zoomTime = 1500;
 	
 	currentLevel = zoomInLevel;
@@ -310,11 +317,19 @@ function zoomInRedrawBlank(ms) {
 	ziX = startX = currentLevel.cx;
 	ziY = startY = currentLevel.cy;
 	ziScale = 0.2;
-	redrawFunction = zoomingIn;
+	redrawFunction = pauseBeforeZoom;
 	drawStuff();
 	
-	function zoomingIn(ms) {
+	function pauseBeforeZoom(ms) {
 		var t = ms - startTime;
+		if (t > pauseTime) {
+			redrawFunction = zoomingIn;
+		}
+		drawStuff();
+	}
+	
+	function zoomingIn(ms) {
+		var t = ms - startTime - pauseTime;
 		if (t > zoomTime) {
 			t = zoomTime;
 			redrawFunction = done;
