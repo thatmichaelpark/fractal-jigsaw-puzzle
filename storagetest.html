@@ -74,8 +74,10 @@ canvas.onmousedown = function (e) {
 			mouseOffsetX = ht.x;
 			mouseOffsetY = ht.y;
 			if (selectedPiece == piecesToDraw[i]) {		// double-click
-				zoomIn(selectedPiece.levelData.path);
-				break;
+				if (selectedPiece.levelData.children) {	// not lowest level?
+					zoomIn(selectedPiece.levelData.path);
+					break;
+				}
 			}
 			selectedPiece = piecesToDraw[i];
 			setTimeout(function () { selectedPiece = null; }, 300);
@@ -396,11 +398,9 @@ function zoomInRedrawComplete(ms) {
 	redrawFunction = pauseBeforeZoom;
 	currentLevel = zoomInLevel;
 	initLevel();
-	drawStuff();
 	
 	ziX = startX = currentLevel.cx;
 	ziY = startY = currentLevel.cy;
-	ziScale = 0.2;
 	redrawFunction = pauseBeforeZoom;
 	drawStuff();
 	
