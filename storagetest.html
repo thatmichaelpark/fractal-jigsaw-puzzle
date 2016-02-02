@@ -45,7 +45,7 @@
 angular.module('testApp', []).controller('Ctrl', function ($scope) {
 
 $scope.ii = 0;
-$scope.path = [24];
+$scope.path = [24, 24];
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -59,7 +59,7 @@ var backgroundPiece = null;
 
 var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
 var currentLevel = levelPath($scope.path);
-blah();
+initLevel();
 
 var draggingPiece = null;
 var selectedPiece = null;
@@ -109,10 +109,10 @@ canvas.onmousedown = function (e) {
 
 canvas.onmousemove = function (e) {
 	if (draggingPiece != null) {
-		var mouseX = e.clientX - canvas.width/2;
-		var mouseY = e.clientY - canvas.height/2;
-		draggingPiece.levelData.cx = mouseX + mouseOffsetX;
-		draggingPiece.levelData.cy = mouseY + mouseOffsetY;
+		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
+		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
+		draggingPiece.levelData.cx = mouseX;
+		draggingPiece.levelData.cy = mouseY;
 		redraw();
 		event.preventDefault();
 	}
@@ -120,10 +120,10 @@ canvas.onmousemove = function (e) {
 
 canvas.onmouseup = function (e) {
 	if (draggingPiece != null) {
-		var mouseX = e.clientX - canvas.width/2;
-		var mouseY = e.clientY - canvas.height/2;
-		draggingPiece.levelData.cx = mouseX + mouseOffsetX;
-		draggingPiece.levelData.cy = mouseY + mouseOffsetY;
+		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
+		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
+		draggingPiece.levelData.cx = mouseX;
+		draggingPiece.levelData.cy = mouseY;
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
 				draggingPiece.levelData.cx = draggingPiece.levelData.fx;
@@ -145,7 +145,7 @@ $scope.zoomInClick = function() {
 	$scope.path.push(ii);
 	currentLevel = levelPath($scope.path);
 	if (currentLevel != null) {
-		blah();
+		initLevel();
 	} else {
 		alert('Could not find');;;
 	}
@@ -175,9 +175,14 @@ function levelPath(path) {
 	return level;
 }
 
-function blah(priorityLevel) {
+function initLevel(priorityLevel) {
 // for currentLevel, create Piece objects for backgroundPiece and piecesToDraw.
 // priorityLevel is moved to the front of the worker render queue.
+
+	for (var i=0; i<piecesToDraw.length; ++i) {	// preserve drawing order
+		piecesToDraw[i].levelData.zOrder = i;	//  of old current level
+	}
+
 	var children = currentLevel.children || [];
 	var bigPiece = new Piece(4);
 	bigPiece.xorRect(0, 0, bigPiece.wholeSide, bigPiece.wholeSide, 255, 255, 200, 0);
@@ -202,6 +207,7 @@ function blah(priorityLevel) {
 		piece.toImg();
 		piecesToDraw.push(piece);
 	}
+	piecesToDraw.sort(function (a, b) { return a.levelData.zOrder - b.levelData.zOrder; });
 	redraw();
 	
 	var piecesForWorker = [];
@@ -233,6 +239,7 @@ function blah(priorityLevel) {
 		if (iin < piecesForWorker.length) {	// just in case level changed in the middle
 			if (piecesForWorker[iin].levelData == levelPath(event.data.path)) {
 				piecesForWorker[iin].imageData = new ImageData(event.data.data, piecesForWorker[iin].wholeSide, piecesForWorker[iin].wholeSide);
+				piecesForWorker[iin].inoutline();
 				piecesForWorker[iin].toImg();
 				piecesForWorker[iin].rendered = true;
 				++iin;
@@ -290,12 +297,14 @@ function redrawBackground() {
 	}
 }
 
-function redrawPieces() {	
+function redrawPieces() {
 	for (var i=0; i<piecesToDraw.length; ++i) {
 		piecesToDraw[i].draw(ctx);
 	}
 }
 
+var pauseTime = 333;
+var zoomTime = 1500;
 var zoomInLevel;
 
 function zoomIn(path) {
@@ -309,11 +318,9 @@ function zoomInRedrawBlank(ms) {
 	var ziPieceToDraw;
 	var startX, startY;
 	var ziScale, ziX, ziY;
-	var pauseTime = 333;
-	var zoomTime = 1500;
 	
 	currentLevel = zoomInLevel;
-	blah();
+	initLevel();
 	ziX = startX = currentLevel.cx;
 	ziY = startY = currentLevel.cy;
 	ziScale = 0.2;
@@ -365,9 +372,8 @@ function zoomInRedrawComplete(ms) {
 	var ziPieceToDraw;
 	var startX, startY;
 	var ziScale, ziX, ziY;
-	var zoomTime = 1500;
 	
-	for (var i=0; i<piecesToDraw.length; ++i) {
+	for (var i=0; i<piecesToDraw.length; ++i) {	// find the piece being zoomed
 		if (zoomInLevel == piecesToDraw[i].levelData) {
 			ziPieceToDraw = piecesToDraw[i];
 			ziScale = 1;
@@ -378,14 +384,30 @@ function zoomInRedrawComplete(ms) {
 	}
 	piecesToDraw = [];
 	backgroundPiece = null;
-	redrawFunction = zoomingIn;
+	redrawFunction = pauseBeforeZoom;
+	currentLevel = zoomInLevel;
+	initLevel();
 	drawStuff();
 	
-	function zoomingIn(ms) {
+	ziX = startX = currentLevel.cx;
+	ziY = startY = currentLevel.cy;
+	ziScale = 0.2;
+	redrawFunction = pauseBeforeZoom;
+	drawStuff();
+	
+	function pauseBeforeZoom(ms) {
 		var t = ms - startTime;
+		if (t > pauseTime) {
+			redrawFunction = zoomingIn;
+		}
+		drawStuff();
+	}
+	
+	function zoomingIn(ms) {
+		var t = ms - startTime - pauseTime;
 		if (t > zoomTime) {
 			t = zoomTime;
-///			redrawFunction = loadNextLevel;
+			redrawFunction = waitTillAllRendered;
 		}
 		var s = t / zoomTime;		// 0..1
 		ziScale = 1 + s * 4;		// 1..5
@@ -393,17 +415,41 @@ function zoomInRedrawComplete(ms) {
 		ziY = startY - s * startY;
 		drawStuff();
 	}
+
+	var allRendered = false;
+	
+	function waitTillAllRendered(ms) {
+		if (allRendered) {
+			redrawFunction = done;
+		}
+		drawStuff();
+	}
+	
+	function done(ms) {
+		redrawFunction = normalRedraw;
+		redraw();
+	}
 	
 	function drawStuff() {
 		ctx.save();
-		redrawBackground();
+//		redrawBackground();
+		ctx.fillStyle = 'teal';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		ctx.translate(canvas.width/2, canvas.height/2);
 		ctx.save();
 		ctx.translate(ziX-ziPieceToDraw.levelData.cx * ziScale,
 						ziY-ziPieceToDraw.levelData.cy * ziScale);
 		ctx.scale(ziScale, ziScale);
 		ziPieceToDraw.draw(ctx);
 		ctx.restore();
-		redrawPieces();	
+		allRendered = true;
+		for (var i=0; i<piecesToDraw.length; ++i) {
+			if (piecesToDraw[i].rendered) {
+				piecesToDraw[i].draw(ctx);
+			} else {
+				allRendered = false;
+			}
+		}
 		ctx.restore();
 		redraw();
 	}
@@ -428,9 +474,6 @@ function zoomOutRedraw(ms) {
 	var destY = currentLevel.cy;
 
 	var level = currentLevel;
-	
-	var pauseTime = 333;
-	var zoomTime = 1500;
 	
 	redrawFunction = pauseBeforeZoom;
 	drawStuff();
@@ -475,7 +518,7 @@ function zoomOutRedraw(ms) {
 		zoX = destX;
 		zoY = destY;
 		currentLevel = levelPath(currentLevel.path.slice(0, -1));
-		blah(level);
+		initLevel(level);
 		redrawFunction = waitForPiece;
 		drawStuff();
 	}
@@ -537,6 +580,7 @@ function createData(re, im, zoom, levels) {
 			fx: fx,		// final position
 			fy: fy,
 			rot: rot,
+			zOrder: 0,
 			inPlace: false
 		};
 		

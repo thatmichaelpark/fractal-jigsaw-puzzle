@@ -259,12 +259,17 @@ function get(x, y) {
 }
 
 function hitTest(x, y) {
+// return null if miss, offset x/y if hit.
 	var ix = Math.round(x - this.levelData.cx + this.wholeSide / 2);
 	var iy = Math.round(y - this.levelData.cy + this.wholeSide / 2);
 	if (ix < 0 || ix >= this.wholeSide || iy < 0 || iy >= this.wholeSide) {
-		return false;
+		return null;
 	}
-	return this.get(ix, iy).a != 0;
+	if (this.get(ix, iy).a != 0) {
+		return {x: this.levelData.cx - x, y: this.levelData.cy - y};
+	} else {
+		return null;
+	}
 }
 
 function toImg() {
