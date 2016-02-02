@@ -27,10 +27,10 @@ If level is not done:
 done:
 placed pieces shouldn't be movable
 offset piece from click point
+maintain z-order after zooming away and back
 
 to do:
 pieces need to be complete before they can be placed
-maintain z-order after zooming away and back
 click pieces together
 sound
 build level tree as you go
