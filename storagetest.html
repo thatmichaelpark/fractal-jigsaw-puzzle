@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" ng-app="testApp">
+<html lang="en">
 <head>
 	<meta charset="UTF-8" />
 	<title>Experiment: storage</title>
-	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
 	<style>
 
 #drawdiv {
@@ -24,28 +23,16 @@
 
 	</style>
 </head>
-<body ng-controller="Ctrl">
+<body>
 	<div id="drawdiv"">
 		<canvas id="canvas">
 		</canvas>
 	</div>
-	<div id="datadiv">
-		<div>
-			{{path}}
-			<input type="number" ng-model="ii">
-			<button ng-click="zoomInClick()">Zoom In</button>
-			<button ng-click="zoomOutClick()">Zoom Out</button>
-		</div>
-		<div>
-			<button ng-click="saveClick()">Save</button>
-		</div>
-	</div>	<script src="piece.js"></script>
+	<script src="piece.js"></script>
 	<script>
 "use strict"
-angular.module('testApp', []).controller('Ctrl', function ($scope) {
 
-$scope.ii = 0;
-$scope.path = [24, 24];
+var path = [24, 24];
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -58,7 +45,7 @@ var piecesToDraw = [];
 var backgroundPiece = null;
 
 var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
-var currentLevel = levelPath($scope.path);
+var currentLevel = levelPath(path);
 initLevel();
 
 var draggingPiece = null;
@@ -143,22 +130,12 @@ canvas.onmouseup = function (e) {
 	}
 }
 
-$scope.zoomInClick = function() {
-	$scope.path.push(ii);
-	currentLevel = levelPath($scope.path);
-	if (currentLevel != null) {
-		initLevel();
-	} else {
-		alert('Could not find');;;
+window.addEventListener("keydown", function (e) {
+	if (e.keyCode == 27) {	// escape?
+		zoomOut();
+		redraw();
 	}
-	zoomIn($scope.path);
-	redraw();
-}
-
-$scope.zoomOutClick = function () {
-	zoomOut();
-	redraw();
-}
+}, false);
 
 function checkLevelDone() {
 	for (var i=1; i<piecesToDraw.length; ++i) {
@@ -465,7 +442,7 @@ function zoomInRedrawComplete(ms) {
 }
 
 function zoomOut() {
-	if ($scope.path.length > 0) {
+	if (currentLevel.path.length > 0) {	// can't zoom out of top level
 		currentLevel.isComplete = checkLevelDone();
 		redrawFunction = zoomOutRedraw;
 	}
@@ -630,7 +607,6 @@ function createData(re, im, zoom, levels) {
 		return levelData;
 	}
 }
-});
 	</script>
 </body>
 </html>
