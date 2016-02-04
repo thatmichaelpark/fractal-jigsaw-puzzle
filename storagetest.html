@@ -291,8 +291,9 @@ function easeInOutQuad(t, b, c, d) {
 
 var easingFunction = easeInOutQuad;
 
-var pauseTime = 333;
+var pauseTime = 333;;;
 var zoomTime = 1500;
+var fadeTime = 500;
 var zoomInLevel;
 
 function zoomIn(path) {
@@ -303,31 +304,44 @@ function zoomIn(path) {
 function zoomInRedrawBlank(ms) {
 // zoom in on a not-completed piece
 	var startTime = ms;
-	var ziPieceToDraw;
 	var startX, startY;
 	var ziScale, ziX, ziY;
+	var alpha = 1;
+	
+	var ziPiecesToDraw = [backgroundPiece];
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		ziPiecesToDraw.push(piecesToDraw[i]);
+	}
 	
 	currentLevel = zoomInLevel;
 	initLevel();
 	ziX = startX = currentLevel.cx;
 	ziY = startY = currentLevel.cy;
 	ziScale = 0.2;
-	redrawFunction = pauseBeforeZoom;
+	redrawFunction = fadeOut;
 	drawStuff();
 	
-	function pauseBeforeZoom(ms) {
+	function fadeOut(ms) {
 		var t = ms - startTime;
-		if (t > pauseTime) {
+		alpha = 1 - t / fadeTime;
+		if (t > fadeTime) {
+			alpha = 0;
+			startTime = ms;
 			redrawFunction = zoomingIn;
 		}
 		drawStuff();
 	}
 	
 	function zoomingIn(ms) {
-		var t = ms - startTime - pauseTime;
+		var t = ms - startTime;
 		if (t > zoomTime) {
 			t = zoomTime;
-			redrawFunction = done;
+			ziPiecesToDraw = [backgroundPiece];
+			for (var i=0; i<piecesToDraw.length; ++i) {
+				ziPiecesToDraw.push(piecesToDraw[i]);
+			}
+			startTime = ms;
+			redrawFunction = fadeIn;
 		}
 		var s = easingFunction(t/zoomTime, 0, 1, 1);
 		ziScale = 0.2 + s * 0.8;	// 0.2..1
@@ -336,9 +350,14 @@ function zoomInRedrawBlank(ms) {
 		drawStuff();
 	}
 	
-	function done(ms) {
-		redrawFunction = normalRedraw;
-		redraw();
+	function fadeIn(ms) {
+		var t = ms - startTime;
+		alpha = t / fadeTime;
+		if (t > fadeTime) {
+			alpha = 1;
+			redrawFunction = normalRedraw;
+		}
+		drawStuff();
 	}
 	
 	function drawStuff() {
@@ -346,6 +365,12 @@ function zoomInRedrawBlank(ms) {
 		ctx.fillStyle = 'teal';
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		ctx.translate(canvas.width/2, canvas.height/2);
+		ctx.save();
+		ctx.globalAlpha = alpha;
+		for (var i=0; i<ziPiecesToDraw.length; ++i) {
+			ziPiecesToDraw[i].draw(ctx);
+		}
+		ctx.restore();
 		ctx.translate(ziX, ziY);
 		ctx.scale(ziScale, ziScale);
 		backgroundPiece.draw(ctx);
@@ -558,7 +583,6 @@ function zoomOutRedrawComplete(ms) {
 	var zoPiecesToDraw = [];
 	var zoScale, zoX, zoY;
 	var alpha = 0;
-	var fadeTime = 500;
 	
 	var destX = currentLevel.cx;
 	var destY = currentLevel.cy;
