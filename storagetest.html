@@ -282,11 +282,11 @@ function redrawPieces() {
 	}
 }
 
-function easeInOutQuad(t, b, c, d) {
-	t /= d/2;
-	if (t < 1) return c/2*t*t + b;
+function easeInOutQuad(t) {
+	t /= 1/2;
+	if (t < 1) return 1/2*t*t;
 	t--;
-	return -c/2 * (t*(t-2) - 1) + b;
+	return -1/2 * (t*(t-2) - 1);
 }
 
 var easingFunction = easeInOutQuad;
@@ -343,7 +343,7 @@ function zoomInRedrawBlank(ms) {
 			startTime = ms;
 			redrawFunction = fadeIn;
 		}
-		var s = easingFunction(t/zoomTime, 0, 1, 1);
+		var s = easingFunction(t/zoomTime);
 		ziScale = 0.2 + s * 0.8;	// 0.2..1
 		ziX = startX - s * startX;
 		ziY = startY - s * startY;
@@ -420,7 +420,7 @@ function zoomInRedrawComplete(ms) {
 			t = zoomTime;
 			redrawFunction = waitTillAllRendered;
 		}
-		var s = easingFunction(t/zoomTime, 0, 1, 1);
+		var s = easingFunction(t/zoomTime);
 		ziScale = 1 + s * 4;		// 1..5
 		ziX = startX - s * startX;
 		ziY = startY - s * startY;
@@ -517,7 +517,7 @@ function zoomOutRedrawBlank(ms) {
 			t = zoomTime;
 			redrawFunction = loadNextLevel;
 		}
-		var s = easingFunction(t/zoomTime, 0, 1, 1);
+		var s = easingFunction(t/zoomTime);
 		zoScale = 1 - s * 0.8;		// 1..0.2
 		zoX = destX * s;
 		zoY = destY * s;
@@ -601,7 +601,7 @@ function zoomOutRedrawComplete(ms) {
 			t = zoomTime;
 			redrawFunction = loadNextLevel;
 		}
-		var s = easingFunction(t/zoomTime, 0, 1, 1);
+		var s = easingFunction(t/zoomTime);
 		zoScale = 1 - s * 0.8;		// 1..0.2
 		zoX = destX * s;
 		zoY = destY * s;
