@@ -444,50 +444,135 @@ function zoomInRedrawComplete(ms) {
 function zoomOut() {
 	if (currentLevel.path.length > 0) {	// can't zoom out of top level
 		currentLevel.isComplete = checkLevelDone();
-		redrawFunction = zoomOutRedraw;
+		redrawFunction = currentLevel.isComplete ? zoomOutRedrawComplete : zoomOutRedrawBlank;
 	}
 }
 
-function zoomOutRedraw(ms) {
+function zoomOutRedrawBlank(ms) {
+// zoom out of a not-completed piece
 	var startTime = ms;
 	var zoPiecesToDraw = [];
 	var zoScale, zoX, zoY;
-	var zoAlpha = 0;
+	var alpha = 1;
+	var bkgdAlpha = 1;
 	var fadeTime = 500;
 	
 	var destX = currentLevel.cx;
 	var destY = currentLevel.cy;
 
 	var level = currentLevel;
-	var wait;
-			if (currentLevel.isComplete) {
-				zoPiecesToDraw = piecesToDraw;
-				wait = true;
-			} else {
-				zoPiecesToDraw = [backgroundPiece];
-				for (var i=0; i<piecesToDraw.length; ++i) {
-					if (piecesToDraw[i].levelData.inPlace) {
-						zoPiecesToDraw.push(piecesToDraw[i]);
-					}
+
+	
+	redrawFunction = fadeOut;
+	drawStuff();
+	
+	function fadeOut(ms) {
+		var t = ms - startTime;
+		if (t > fadeTime) {
+			t = fadeTime;
+			startTime = ms;
+			zoPiecesToDraw = [backgroundPiece];
+			for (var i=0; i<piecesToDraw.length; ++i) {
+				if (piecesToDraw[i].levelData.inPlace) {
+					zoPiecesToDraw.push(piecesToDraw[i]);
 				}
-				wait = false;
 			}
 			piecesToDraw = [];
 			backgroundPiece = null;
-	
-	redrawFunction = pauseBeforeZoom;
-	drawStuff();
-	
-	function pauseBeforeZoom(ms) {
-		var t = ms - startTime;
-		if (t > pauseTime) {
 			redrawFunction = zoomingOut;
 		}
+		alpha = 1 - t / fadeTime;
 		drawStuff();
 	}
 	
+	
 	function zoomingOut(ms) {
-		var t = ms - startTime - pauseTime;
+		var t = ms - startTime;
+		if (t > zoomTime) {
+			t = zoomTime;
+			redrawFunction = loadNextLevel;
+		}
+		var s = easingFunction(t/zoomTime, 0, 1, 1);
+		zoScale = 1 - s * 0.8;		// 1..0.2
+		zoX = destX * s;
+		zoY = destY * s;
+		drawStuff();
+	}
+	
+	function loadNextLevel(ms) {
+		zoScale = 0.2;
+		zoX = destX;
+		zoY = destY;
+		bkgdAlpha = 0;
+		currentLevel = levelPath(currentLevel.path.slice(0, -1));
+		initLevel(level);
+		redrawFunction = fadeIn;
+		startTime = 0;
+		drawStuff();
+	}
+	
+	function fadeIn(ms) {
+		if (!startTime) {
+			startTime = ms;
+		}
+		var t = ms - startTime;
+		if (t > fadeTime) {
+			t = fadeTime;
+			zoPiecesToDraw = [];
+			redrawFunction = normalRedraw;
+		}
+		bkgdAlpha = alpha = t/fadeTime;
+		drawStuff();
+	}
+	
+	function drawStuff() {
+		ctx.save();
+		ctx.fillStyle = 'teal';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		ctx.translate(canvas.width/2, canvas.height/2);
+		if (backgroundPiece) {
+			ctx.globalAlpha = bkgdAlpha;
+			backgroundPiece.draw(ctx);
+		}
+
+		ctx.save();
+		ctx.translate(zoX, zoY);
+		ctx.scale(zoScale, zoScale);
+		ctx.globalAlpha = 1;
+		for (var i=0; i<zoPiecesToDraw.length; ++i) {
+			zoPiecesToDraw[i].draw(ctx);
+		}
+		ctx.restore();
+		
+		ctx.globalAlpha = alpha;
+		redrawPieces();	
+
+		ctx.restore();
+		redraw();
+	}
+}
+
+function zoomOutRedrawComplete(ms) {
+// zoom out of a completed piece
+	var startTime = ms;
+	var zoPiecesToDraw = [];
+	var zoScale, zoX, zoY;
+	var alpha = 0;
+	var fadeTime = 500;
+	
+	var destX = currentLevel.cx;
+	var destY = currentLevel.cy;
+
+	var level = currentLevel;
+	zoPiecesToDraw = piecesToDraw;
+	piecesToDraw = [];
+	backgroundPiece = null;
+	
+	redrawFunction = zoomingOut;
+	drawStuff();
+	
+	function zoomingOut(ms) {
+		var t = ms - startTime;
 		if (t > zoomTime) {
 			t = zoomTime;
 			redrawFunction = loadNextLevel;
@@ -517,19 +602,14 @@ function zoomOutRedraw(ms) {
 		var t = ms - startTime;
 		if (t > fadeTime) {
 			t = fadeTime;
-			if (wait) {
-				for (var i=0; i<piecesToDraw.length; ++i) {
-					if (piecesToDraw[i].levelData == level && piecesToDraw[i].rendered) {
-						zoPiecesToDraw = [];
-						redrawFunction = normalRedraw;
-					}
+			for (var i=0; i<piecesToDraw.length; ++i) {
+				if (piecesToDraw[i].levelData == level && piecesToDraw[i].rendered) {
+					zoPiecesToDraw = [];
+					redrawFunction = normalRedraw;
 				}
-			} else {
-				zoPiecesToDraw = [];
-				redrawFunction = normalRedraw;
 			}
 		}
-		zoAlpha = t/fadeTime;
+		alpha = t/fadeTime;
 		drawStuff();
 	}
 	
@@ -539,29 +619,18 @@ function zoomOutRedraw(ms) {
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		ctx.translate(canvas.width/2, canvas.height/2);
 		if (backgroundPiece) {
-			ctx.globalAlpha = zoAlpha;
 			backgroundPiece.draw(ctx);
 		}
 
-		if (wait) {
-			ctx.globalAlpha = zoAlpha;
-			redrawPieces();	
-		}
+		ctx.globalAlpha = alpha;
+		redrawPieces();	
 	
-		ctx.save();
 		ctx.translate(zoX, zoY);
 		ctx.scale(zoScale, zoScale);
 		ctx.globalAlpha = 1;
 		for (var i=0; i<zoPiecesToDraw.length; ++i) {
 			zoPiecesToDraw[i].draw(ctx);
 		}
-		ctx.restore();
-		
-		if (!wait) {
-			ctx.globalAlpha = zoAlpha;
-			redrawPieces();	
-		}
-
 
 		ctx.restore();
 		redraw();
