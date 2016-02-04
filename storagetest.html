@@ -420,6 +420,7 @@ function zoomInRedrawComplete(ms) {
 	var startX, startY;
 	var ziScale, ziX, ziY;
 	var alpha = 1;
+	var zooming = true;
 	
 	for (var i=0; i<piecesToDraw.length; ++i) {	// find the piece being zoomed
 	// Piece links to corresponding levelData, but not the other way around,
@@ -458,6 +459,7 @@ function zoomInRedrawComplete(ms) {
 		var t = ms - startTime;
 		if (t > zoomTime) {
 			t = zoomTime;
+			zooming = false;
 			redrawFunction = waitTillAllRendered;
 		}
 		var s = easingFunction(t/zoomTime);
@@ -471,14 +473,9 @@ function zoomInRedrawComplete(ms) {
 	
 	function waitTillAllRendered(ms) {
 		if (allRendered) {
-			redrawFunction = done;
+			redrawFunction = normalRedraw;
 		}
 		drawStuff2();
-	}
-	
-	function done(ms) {
-		redrawFunction = normalRedraw;
-		redraw();
 	}
 	
 	function drawStuff1() {
@@ -513,7 +510,7 @@ function zoomInRedrawComplete(ms) {
 		ziPieceToDraw.draw(ctx);
 		ctx.restore();
 		allRendered = true;
-		if (redrawFunction == waitTillAllRendered) {
+		if (!zooming) {
 			for (var i=0; i<piecesToDraw.length; ++i) {
 				if (piecesToDraw[i].rendered) {
 					piecesToDraw[i].draw(ctx);
