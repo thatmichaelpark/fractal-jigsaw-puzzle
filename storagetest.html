@@ -407,8 +407,11 @@ function zoomInRedrawComplete(ms) {
 	var ziPieceToDraw;
 	var startX, startY;
 	var ziScale, ziX, ziY;
+	var alpha = 1;
 	
 	for (var i=0; i<piecesToDraw.length; ++i) {	// find the piece being zoomed
+	// Piece links to corresponding levelData, but not the other way around,
+	// so, given zoomInLevel, we have to loop to find its Piece.
 		if (zoomInLevel == piecesToDraw[i].levelData) {
 			ziPieceToDraw = piecesToDraw[i];
 			ziScale = 1;
@@ -417,27 +420,30 @@ function zoomInRedrawComplete(ms) {
 			break;
 		}
 	}
-	piecesToDraw = [];
-	backgroundPiece = null;
-	redrawFunction = pauseBeforeZoom;
-	currentLevel = zoomInLevel;
-	initLevel();
+
+	redrawFunction = fadeOut;
+	drawStuff1();
 	
-	ziX = startX = currentLevel.cx;
-	ziY = startY = currentLevel.cy;
-	redrawFunction = pauseBeforeZoom;
-	drawStuff();
-	
-	function pauseBeforeZoom(ms) {
+	function fadeOut(ms) {
 		var t = ms - startTime;
-		if (t > pauseTime) {
+		alpha = 1 - t / fadeTime
+		if (t > fadeTime) {
+			alpha = 0;
+			startTime = 0;
+			piecesToDraw = [];
+			backgroundPiece = null;
+			currentLevel = zoomInLevel;
+			initLevel();
 			redrawFunction = zoomingIn;
 		}
-		drawStuff();
+		drawStuff1();
 	}
 	
 	function zoomingIn(ms) {
-		var t = ms - startTime - pauseTime;
+		if (!startTime) {
+			startTime = ms;
+		}
+		var t = ms - startTime;
 		if (t > zoomTime) {
 			t = zoomTime;
 			redrawFunction = waitTillAllRendered;
@@ -446,7 +452,7 @@ function zoomInRedrawComplete(ms) {
 		ziScale = 1 + s * 4;		// 1..5
 		ziX = startX - s * startX;
 		ziY = startY - s * startY;
-		drawStuff();
+		drawStuff2();
 	}
 
 	var allRendered = false;
@@ -455,7 +461,7 @@ function zoomInRedrawComplete(ms) {
 		if (allRendered) {
 			redrawFunction = done;
 		}
-		drawStuff();
+		drawStuff2();
 	}
 	
 	function done(ms) {
@@ -463,9 +469,28 @@ function zoomInRedrawComplete(ms) {
 		redraw();
 	}
 	
-	function drawStuff() {
+	function drawStuff1() {
 		ctx.save();
-//		redrawBackground();
+		ctx.fillStyle = 'teal';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		ctx.translate(canvas.width/2, canvas.height/2);
+		ctx.save();
+		ctx.globalAlpha = alpha;
+		backgroundPiece.draw(ctx);
+		for (var i=0; i<piecesToDraw.length; ++i) {
+			piecesToDraw[i].draw(ctx);
+		}
+		ctx.restore();
+		ctx.translate(ziX-ziPieceToDraw.levelData.cx * ziScale,
+						ziY-ziPieceToDraw.levelData.cy * ziScale);
+		ctx.scale(ziScale, ziScale);
+		ziPieceToDraw.draw(ctx);
+		ctx.restore();
+		redraw();
+	}
+
+	function drawStuff2() {
+		ctx.save();
 		ctx.fillStyle = 'teal';
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		ctx.translate(canvas.width/2, canvas.height/2);
@@ -476,11 +501,13 @@ function zoomInRedrawComplete(ms) {
 		ziPieceToDraw.draw(ctx);
 		ctx.restore();
 		allRendered = true;
-		for (var i=0; i<piecesToDraw.length; ++i) {
-			if (piecesToDraw[i].rendered) {
-				piecesToDraw[i].draw(ctx);
-			} else {
-				allRendered = false;
+		if (redrawFunction == waitTillAllRendered) {
+			for (var i=0; i<piecesToDraw.length; ++i) {
+				if (piecesToDraw[i].rendered) {
+					piecesToDraw[i].draw(ctx);
+				} else {
+					allRendered = false;
+				}
 			}
 		}
 		ctx.restore();
