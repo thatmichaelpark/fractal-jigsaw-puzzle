@@ -21,6 +21,7 @@ Piece.prototype = {
 	constructor: Piece,
 	xorRect: xorRect,
 	makePiece: makePiece,
+	makeTopPiece: makeTopPiece,
 	hor: hor,
 	ver: ver,
 	outline: outline,
@@ -65,6 +66,28 @@ function makePiece(u, v, du, dv) {
 	this.hor(this.padding,   this.padding+s, s, u,    v+dv, du, dv);
 	this.ver(this.padding,   this.padding,   s, u,    v,    du, dv);
 	this.ver(this.padding+s, this.padding,   s, u+du, v,    du, dv);
+}
+
+function makeTopPiece(u, v, du5, dv5) {
+// (u, v) is upper left corner of central 5x5 sub-piece.
+// The top piece is 7x7, so we have to adjust outward.
+	var du1 = du5 / 5;
+	var dv1 = dv5 / 5;
+	u -= du1;
+	v -= dv1;
+	
+	var s5 = this.pieceSide;
+	var s1 = s5 / 5;
+	
+	this.alpha = 255;
+	this.xorRect(this.padding-s1, this.padding-s1, s5+2*s1, s5+2*s1, 0, 0, 0, this.alpha);
+
+	for (var i=0; i<7; ++i) {
+		this.hor(this.padding+(i-1)*s1, this.padding-s1, s1, u+i*du1, v, du1, dv1);
+		this.hor(this.padding+(i-1)*s1, this.padding+s5+s1, s1, u+i*du1, v+7*dv1, du1, dv1);
+		this.ver(this.padding-s1, this.padding+(i-1)*s1, s1, u, v+i*dv1, du1, dv1);
+		this.ver(this.padding+s5+s1, this.padding+(i-1)*s1, s1, u+7*du1, v+i*dv1, du1, dv1);
+	}
 }
 
 function hor(x, y, d, u, v, du, dv) {
@@ -184,6 +207,7 @@ var dxs = [0, 1, 1, 1, 0, -1, -1, -1];
 var dys = [-1, -1, 0, 1, 1, 1, 0, -1];
 
 function outline() {
+	return;;;
 	var x0 = this.padding;
 	var y0 = this.padding - 1;
 	var x = x0;

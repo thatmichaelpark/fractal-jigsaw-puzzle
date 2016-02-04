@@ -32,7 +32,7 @@
 	<script>
 "use strict"
 
-var path = [24, 24];
+var path = [];
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
@@ -177,7 +177,11 @@ function initLevel(priorityLevel) {
 	var children = currentLevel.children || [];
 	var bigPiece = new Piece(4);
 	bigPiece.xorRect(0, 0, bigPiece.wholeSide, bigPiece.wholeSide, 255, 255, 200, 0);
-	bigPiece.makePiece(currentLevel.u0, currentLevel.v0, currentLevel.du, currentLevel.dv);
+	if (currentLevel.isTop) {
+		bigPiece.makeTopPiece(currentLevel.u0, currentLevel.v0, currentLevel.du, currentLevel.dv);
+	} else {
+		bigPiece.makePiece(currentLevel.u0, currentLevel.v0, currentLevel.du, currentLevel.dv);
+	}
 	bigPiece.outline();
 	bigPiece.toImg();
 	bigPiece.levelData = {cx: 0, cy: 0};
@@ -728,9 +732,9 @@ function createData(re, im, zoom, levels) {
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createDataHelper([], re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, levels);
+	return createDataHelper([], re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, levels, true);
 	
-	function createDataHelper(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, levels) {
+	function createDataHelper(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, levels, isTop) {
 		var levelData = {
 			path: path.slice(),	// *copy* of path
 			re0: re0,
@@ -747,7 +751,8 @@ function createData(re, im, zoom, levels) {
 			fy: fy,
 			rot: rot,
 			zOrder: 0,
-			inPlace: false
+			inPlace: false,
+			isTop: isTop
 		};
 		
 		if (levels == 0) {
@@ -774,12 +779,12 @@ function createData(re, im, zoom, levels) {
 					fx = (j - 2) * 125;
 					cx = (Math.random() - 0.5) * 7 * 125;
 					cy = (Math.random() - 0.5) * 7 * 125;
-					if (piece.get(piece.padding+j, piece.padding+i).a) {
+					if (piece.get(piece.padding+j, piece.padding+i).a || isTop) {
 						path.push(levelData.children.length);
 						levelData.children.push(createDataHelper(path, re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, rot, levels-1));
 						path.pop();
 					} else {
-						levelData.children.push(null);
+						levelData.children.push(undefined);
 					}
 				}
 			}
