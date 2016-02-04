@@ -137,6 +137,18 @@ window.addEventListener("keydown", function (e) {
 	}
 }, false);
 
+window.addEventListener("keypress", function (e) {
+	if (e.charCode == 115) {	// 's'
+		for (var i=0; i<piecesToDraw.length; ++i) {
+			piecesToDraw[i].levelData.cx = piecesToDraw[i].levelData.fx;
+			piecesToDraw[i].levelData.cy = piecesToDraw[i].levelData.fy;
+			piecesToDraw[i].levelData.inPlace = true;
+			piecesToDraw[i].levelData.isComplete = true;
+		}
+		redraw();
+	}
+}, false);
+
 function checkLevelDone() {
 	for (var i=1; i<piecesToDraw.length; ++i) {
 		if (!piecesToDraw[i].levelData.inPlace) {
