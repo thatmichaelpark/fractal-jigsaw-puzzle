@@ -315,6 +315,8 @@ function zoomInRedrawBlank(ms) {
 	
 	currentLevel = zoomInLevel;
 	initLevel();
+	var ziBackgroundPiece = backgroundPiece;
+	
 	ziX = startX = currentLevel.cx;
 	ziY = startY = currentLevel.cy;
 	ziScale = 0.2;
@@ -357,7 +359,7 @@ function zoomInRedrawBlank(ms) {
 			alpha = 1;
 			redrawFunction = normalRedraw;
 		}
-		drawStuff();
+		drawStuff2();
 	}
 	
 	function drawStuff() {
@@ -373,7 +375,27 @@ function zoomInRedrawBlank(ms) {
 		ctx.restore();
 		ctx.translate(ziX, ziY);
 		ctx.scale(ziScale, ziScale);
-		backgroundPiece.draw(ctx);
+		ziBackgroundPiece.draw(ctx);
+		ctx.restore();
+		redraw();
+	}
+	
+	function drawStuff2() {
+		ctx.save();
+		ctx.fillStyle = 'teal';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		ctx.translate(canvas.width/2, canvas.height/2);
+
+		ctx.save();
+		ctx.translate(ziX, ziY);
+		ctx.scale(ziScale, ziScale);
+		ziBackgroundPiece.draw(ctx);
+		ctx.restore();
+
+		ctx.globalAlpha = alpha;
+		for (var i=0; i<ziPiecesToDraw.length; ++i) {
+			ziPiecesToDraw[i].draw(ctx);
+		}
 		ctx.restore();
 		redraw();
 	}
