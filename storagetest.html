@@ -44,7 +44,7 @@ var worker = new Worker('worker.js');
 var piecesToDraw = [];
 var backgroundPiece = null;
 
-var levelData = createData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
+var topLevelData = createTopLevelData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
 var currentLevel = levelPath(path);
 initLevel();
 
@@ -159,8 +159,11 @@ function checkLevelDone() {
 }
 
 function levelPath(path) {
-	var level = levelData;
+	var level = topLevelData;
 	for (var i=0; i<path.length; ++i) {
+		if (level.children == []) {
+			createChildren(level);
+		}
 		level = level.children[path[i]];
 	}
 	return level;
@@ -174,7 +177,11 @@ function initLevel(priorityLevel) {
 		piecesToDraw[i].levelData.zOrder = i;	//  of old current level
 	}
 
-	var children = currentLevel.children || [];
+	if (currentLevel.children.length == 0) {
+		createChildren(currentLevel);
+	}
+
+	var children = currentLevel.children;
 	var bigPiece = new Piece(4);
 	bigPiece.xorRect(0, 0, bigPiece.wholeSide, bigPiece.wholeSide, 255, 255, 200, 0);
 	if (currentLevel.isTop) {
@@ -530,8 +537,12 @@ function zoomInRedrawComplete(ms) {
 
 function zoomOut() {
 	if (currentLevel.path.length > 0) {	// can't zoom out of top level
-		currentLevel.isComplete = checkLevelDone();
-		redrawFunction = currentLevel.isComplete ? zoomOutRedrawComplete : zoomOutRedrawBlank;
+		if (currentLevel.isComplete = checkLevelDone()) {
+			currentLevel.children = [];
+			redrawFunction = zoomOutRedrawComplete;
+		} else {
+			redrawFunction = zoomOutRedrawBlank;
+		}
 	}
 }
 
@@ -727,69 +738,77 @@ function resizeListener(e) {
 	resize();
 }
 
-function createData(re, im, zoom, levels) {
+function createTopLevelData(re, im, zoom, levels) {
 	var re0 = re - 2/zoom;
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createDataHelper([], re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, levels, true);
-	
-	function createDataHelper(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, levels, isTop) {
-		var levelData = {
-			path: path.slice(),	// *copy* of path
-			re0: re0,
-			im0: im0,
-			dre: dre,
-			dim: dim,
-			u0: u0,
-			v0: v0,
-			du: du,
-			dv: dv,
-			cx: cx,		// current position
-			cy: cy,
-			fx: fx,		// final position
-			fy: fy,
-			rot: rot,
-			zOrder: 0,
-			inPlace: false,
-			isTop: isTop
-		};
-		
-		if (levels == 0) {
-			levelData.isComplete = true;
-			levelData.children = null;
-		} else {
-			levelData.isComplete = false;
-			levelData.children = [];
+	return createLevelData([], re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, false, true);
+}
 
-			var piece = new Piece(1);
-			piece.makePiece(u0, v0, du, dv);
+function createLevelData(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, isComplete, isTop) {
+console.log('create level', path);;;
+	var levelData = {
+		path: path.slice(),	// *copy* of path
+		re0: re0,
+		im0: im0,
+		dre: dre,
+		dim: dim,
+		u0: u0,
+		v0: v0,
+		du: du,
+		dv: dv,
+		cx: cx,		// current position
+		cy: cy,
+		fx: fx,		// final position
+		fy: fy,
+		rot: rot,
+		zOrder: 0,
+		inPlace: false,
+		isComplete: isComplete,
+		isTop: isTop,
+		children: []
+	};
+	return levelData;
+}
 
-			dre /= 5;
-			dim /= 5;
-			du /= 5;
-			dv /= 5;
-			for (var i=-1; i<=5; ++i) {
-				var v = v0 + i * dv;
-				var im = im0 + i * dim;
-				fy = (i - 2) * 125;
-				for (var j=-1; j<=5; ++j) {
-					var u = u0 + j * dv;
-					var re = re0 + j * dre;
-					fx = (j - 2) * 125;
-					cx = (Math.random() - 0.5) * 7 * 125;
-					cy = (Math.random() - 0.5) * 7 * 125;
-					if (piece.get(piece.padding+j, piece.padding+i).a || isTop) {
-						path.push(levelData.children.length);
-						levelData.children.push(createDataHelper(path, re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, rot, levels-1));
-						path.pop();
-					} else {
-						levelData.children.push(undefined);
-					}
-				}
+function createChildren(levelData) {
+console.log('create children', levelData.path);;;
+	var isComplete = levelData.isComplete;
+	if (levelData.path.length == 2) {
+		isComplete = true;
+	}
+	var piece = new Piece(1);
+	piece.makePiece(levelData.u0, levelData.v0, levelData.du, levelData.dv);
+
+	var dre = levelData.dre / 5;
+	var dim = levelData.dim / 5;
+	var du = levelData.du / 5;
+	var dv = levelData.dv / 5;
+	for (var i=-1; i<=5; ++i) {
+		var v = levelData.v0 + i * dv;
+		var im = levelData.im0 + i * dim;
+		var fy = (i - 2) * 125;
+		for (var j=-1; j<=5; ++j) {
+			var u = levelData.u0 + j * du;
+			var re = levelData.re0 + j * dre;
+			var fx = (j - 2) * 125;
+			var cx, cy;
+			if (levelData.isComplete) {
+				cx = fx;
+				cy = fy;
+			} else {
+				cx = (Math.random() - 0.5) * 7 * 125;
+				cy = (Math.random() - 0.5) * 7 * 125;
+			}
+			if (piece.get(piece.padding+j, piece.padding+i).a || levelData.isTop) {
+				levelData.path.push(levelData.children.length);
+				levelData.children.push(createLevelData(levelData.path, re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, levelData.rot, isComplete, false));
+				levelData.path.pop();
+			} else {
+				levelData.children.push(null);
 			}
 		}
-		return levelData;
 	}
 }
 	</script>

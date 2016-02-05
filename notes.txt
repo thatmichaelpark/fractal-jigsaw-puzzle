@@ -29,11 +29,13 @@ placed pieces shouldn't be movable
 offset piece from click point
 maintain z-order after zooming away and back
 fade in/out on zoom
-
-to do:
 build level tree as you go
 7x7 at top level
+
+to do:
 pieces need to be complete before they can be placed
 disable mouse when zooming
+load/save
+rotate pieces
 click pieces together
 sound
