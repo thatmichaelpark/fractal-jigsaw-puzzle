@@ -2,23 +2,15 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<title>Experiment: storage</title>
+	<title>Fractal Jigsaw Puzzle</title>
 	<style>
 
 #drawdiv {
 	position: absolute;
 	top: 0;
 	left: 0;
-	right: 20%;
-	bottom: 0;
-}
-#datadiv {
-	position: absolute;
-	top: 0;
-	left: 80%;
 	right: 0;
 	bottom: 0;
-	border: 1px solid green;
 }
 
 	</style>
@@ -32,8 +24,6 @@
 	<script>
 "use strict"
 
-var path = [];
-
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 window.addEventListener('resize', resizeListener);
@@ -44,7 +34,11 @@ var worker = new Worker('worker.js');
 var piecesToDraw = [];
 var backgroundPiece = null;
 
-var topLevelData = createTopLevelData(-0.7436424932257446, 0.1318316199009883, 5000000, 3);
+var path = [24, 24, 25, 25];
+var maxPathLength = 4;
+
+var topLevelData = createTopLevelData(-0.7436424892193446, 0.1318316205585883, 20000000);
+
 var currentLevel = levelPath(path);
 initLevel();
 
@@ -161,7 +155,7 @@ function checkLevelDone() {
 function levelPath(path) {
 	var level = topLevelData;
 	for (var i=0; i<path.length; ++i) {
-		if (level.children == []) {
+		if (level.children.length == 0) {
 			createChildren(level);
 		}
 		level = level.children[path[i]];
@@ -314,7 +308,6 @@ function easeInOutQuad(t) {
 
 var easingFunction = easeInOutQuad;
 
-var pauseTime = 333;;;
 var zoomTime = 1500;
 var fadeTime = 500;
 var zoomInLevel;
@@ -743,11 +736,10 @@ function createTopLevelData(re, im, zoom, levels) {
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createLevelData([], re0, im0, dre, dim, 100, 230, 625, 625, 0, 0, 0, 0, 0, false, true);
+	return createLevelData([], re0, im0, dre, dim, 100, 230, 3125, 3125, 0, 0, 0, 0, 0, false, false, true);
 }
 
-function createLevelData(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, isComplete, isTop) {
-console.log('create level', path);;;
+function createLevelData(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, inPlace, isComplete, isTop) {
 	var levelData = {
 		path: path.slice(),	// *copy* of path
 		re0: re0,
@@ -764,7 +756,7 @@ console.log('create level', path);;;
 		fy: fy,
 		rot: rot,
 		zOrder: 0,
-		inPlace: false,
+		inPlace: inPlace,
 		isComplete: isComplete,
 		isTop: isTop,
 		children: []
@@ -773,11 +765,12 @@ console.log('create level', path);;;
 }
 
 function createChildren(levelData) {
-console.log('create children', levelData.path);;;
 	var isComplete = levelData.isComplete;
-	if (levelData.path.length == 2) {
+	if (levelData.path.length == maxPathLength) {
 		isComplete = true;
 	}
+	var inPlace = false;
+	
 	var piece = new Piece(1);
 	piece.makePiece(levelData.u0, levelData.v0, levelData.du, levelData.dv);
 
@@ -797,13 +790,14 @@ console.log('create children', levelData.path);;;
 			if (levelData.isComplete) {
 				cx = fx;
 				cy = fy;
+				inPlace = true;
 			} else {
 				cx = (Math.random() - 0.5) * 7 * 125;
 				cy = (Math.random() - 0.5) * 7 * 125;
 			}
 			if (piece.get(piece.padding+j, piece.padding+i).a || levelData.isTop) {
 				levelData.path.push(levelData.children.length);
-				levelData.children.push(createLevelData(levelData.path, re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, levelData.rot, isComplete, false));
+				levelData.children.push(createLevelData(levelData.path, re, im, dre, dim, u, v, du, dv, cx, cy, fx, fy, levelData.rot, inPlace, isComplete, false));
 				levelData.path.pop();
 			} else {
 				levelData.children.push(null);
