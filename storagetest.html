@@ -58,6 +58,10 @@ window.addEventListener("unload", function (e) {
 var currentLevel = levelPath(initialPath);
 initLevel();
 
+var clickSound = new Audio('sounds/178186__snapper4298__camera-click-nikon.wav');
+var zoomInSound = new Audio('sounds/333078__michael-kur95__time-s-up.wav');
+var zoomOutSound = new Audio('sounds/333078__michael-kur95__time-s-up_reversed.wav');
+
 var draggingPiece = null;
 var selectedPiece = null;
 var mouseOffsetX, mouseOffsetY;
@@ -131,6 +135,7 @@ function mouseupHandler(e) {
 				piecesToDraw.pop();							// move piece
 				piecesToDraw.unshift(draggingPiece);		//  to bottom
 				draggingPiece.levelData.inPlace = true;
+				clickSound.play();
 		}
 		redraw();
 		draggingPiece = null;
@@ -357,6 +362,7 @@ var zoomInLevel;
 function zoomIn(path) {
 	zoomInLevel = levelPath(path);
 	redrawFunction = zoomInLevel.isComplete ? zoomInRedrawComplete : zoomInRedrawBlank;
+	zoomInSound.play();
 }
 
 function zoomInRedrawBlank(ms) {
@@ -578,6 +584,7 @@ function zoomOut() {
 		} else {
 			redrawFunction = zoomOutRedrawBlank;
 		}
+		zoomOutSound.play();
 	}
 }
 

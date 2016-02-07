@@ -34,8 +34,8 @@ build level tree as you go
 pieces need to be complete before they can be placed
 load/save
 disable mouse when zooming
+sound
 
 to do:
-sound
 click pieces together
 rotate pieces
