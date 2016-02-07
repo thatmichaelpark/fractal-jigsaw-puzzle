@@ -59,8 +59,8 @@ var currentLevel = levelPath(initialPath);
 initLevel();
 
 var clickSound = new Audio('sounds/178186__snapper4298__camera-click-nikon.wav');
-var zoomInSound = new Audio('sounds/333078__michael-kur95__time-s-up.wav');
-var zoomOutSound = new Audio('sounds/333078__michael-kur95__time-s-up_reversed.wav');
+var zoomOutSound = new Audio('sounds/333078__michael-kur95__time-s-up.wav');
+var zoomInSound = new Audio('sounds/333078__michael-kur95__time-s-up_reversed.wav');
 
 var draggingPiece = null;
 var selectedPiece = null;
@@ -154,7 +154,7 @@ function enableMouse() {
 	canvas.addEventListener('mousemove', mousemoveHandler, false); 
 	canvas.addEventListener('mouseup', mouseupHandler, false); 
 	window.addEventListener("keydown", keydownHandler, false);
-	window.addEventListener("keypress", keypressHandler, false);
+//	window.addEventListener("keypress", keypressHandler, false);
 }
 
 enableMouse();
@@ -164,7 +164,7 @@ function disableMouse() {
 	canvas.removeEventListener('mousemove', mousemoveHandler); 
 	canvas.removeEventListener('mouseup', mouseupHandler); 
 	window.removeEventListener("keydown", keydownHandler);
-	window.removeEventListener("keypress", keypressHandler);
+//	window.removeEventListener("keypress", keypressHandler);
 }
 
 function keydownHandler(e) {
