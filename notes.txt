@@ -33,9 +33,9 @@ build level tree as you go
 7x7 at top level
 pieces need to be complete before they can be placed
 load/save
+disable mouse when zooming
 
 to do:
-disable mouse when zooming
 sound
 click pieces together
 rotate pieces

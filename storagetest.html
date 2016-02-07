@@ -56,14 +56,13 @@ window.addEventListener("unload", function (e) {
 }, false);
 
 var currentLevel = levelPath(initialPath);
-console.log(currentLevel.path);;;
 initLevel();
 
 var draggingPiece = null;
 var selectedPiece = null;
 var mouseOffsetX, mouseOffsetY;
 
-canvas.onmousedown = function (e) {
+function mousedownHandler(e) {
 	var mouseX = e.clientX - canvas.width/2;
 	var mouseY = e.clientY - canvas.height/2;
 	for (var i=piecesToDraw.length; --i>=0;) {
@@ -107,7 +106,7 @@ canvas.onmousedown = function (e) {
 	redraw();
 }
 
-canvas.onmousemove = function (e) {
+function mousemoveHandler(e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
 		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
@@ -118,7 +117,7 @@ canvas.onmousemove = function (e) {
 	}
 }
 
-canvas.onmouseup = function (e) {
+function mouseupHandler(e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
 		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
@@ -145,16 +144,34 @@ canvas.onmouseup = function (e) {
 	}
 }
 
-window.addEventListener("keydown", function (e) {
+function enableMouse() {
+	canvas.addEventListener('mousedown', mousedownHandler, false); 
+	canvas.addEventListener('mousemove', mousemoveHandler, false); 
+	canvas.addEventListener('mouseup', mouseupHandler, false); 
+	window.addEventListener("keydown", keydownHandler, false);
+	window.addEventListener("keypress", keypressHandler, false);
+}
+
+enableMouse();
+
+function disableMouse() {
+	canvas.removeEventListener('mousedown', mousedownHandler); 
+	canvas.removeEventListener('mousemove', mousemoveHandler); 
+	canvas.removeEventListener('mouseup', mouseupHandler); 
+	window.removeEventListener("keydown", keydownHandler);
+	window.removeEventListener("keypress", keypressHandler);
+}
+
+function keydownHandler(e) {
 	if (e.keyCode == 27) {	// escape?
 		if (checkLevelDone()) {
 			zoomOut();
 			redraw();
 		}
 	}
-}, false);
+}
 
-window.addEventListener("keypress", function (e) {
+function keypressHandler(e) {
 	if (e.charCode == 115) {	// 's'
 		for (var i=0; i<piecesToDraw.length; ++i) {
 			piecesToDraw[i].levelData.cx = piecesToDraw[i].levelData.fx;
@@ -166,7 +183,7 @@ window.addEventListener("keypress", function (e) {
 	} else if (e.charCode == 63) {	// '?'
 		console.log(JSON.stringify(topLevelData).length);
 	}
-}, false);
+}
 
 function checkLevelDone() {
 	for (var i=1; i<piecesToDraw.length; ++i) {
@@ -179,9 +196,7 @@ function checkLevelDone() {
 
 function levelPath(path) {
 	var level = topLevelData;
-	console.log(path);;;
 	for (var i=0; i<path.length; ++i) {
-	console.log(path[i]);;;
 		if (level.children.length == 0) {
 			createChildren(level);
 		}
@@ -672,6 +687,8 @@ function zoomOutRedrawBlank(ms) {
 
 function zoomOutRedrawComplete(ms) {
 // zoom out of a completed piece
+	disableMouse();
+	
 	var startTime = ms;
 	var zoPiecesToDraw = [];
 	var zoScale, zoX, zoY;
@@ -723,6 +740,7 @@ function zoomOutRedrawComplete(ms) {
 				if (piecesToDraw[i].levelData == level && piecesToDraw[i].rendered) {
 					zoPiecesToDraw = [];
 					redrawFunction = normalRedraw;
+					enableMouse();
 				}
 			}
 		}
