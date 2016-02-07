@@ -31,11 +31,11 @@ maintain z-order after zooming away and back
 fade in/out on zoom
 build level tree as you go
 7x7 at top level
+pieces need to be complete before they can be placed
+load/save
 
 to do:
-pieces need to be complete before they can be placed
 disable mouse when zooming
-load/save
-rotate pieces
-click pieces together
 sound
+click pieces together
+rotate pieces

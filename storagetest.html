@@ -34,12 +34,29 @@ var worker = new Worker('worker.js');
 var piecesToDraw = [];
 var backgroundPiece = null;
 
-var path = [24, 24, 25, 25];
+var initialPath = [24, 25, 25, 25];
 var maxPathLength = 4;
+var topLevelData;
 
-var topLevelData = createTopLevelData(-0.7436424892193446, 0.1318316205585883, 20000000);
+var storedData = localStorage.fractalJigsawPuzzleData001;
 
-var currentLevel = levelPath(path);
+if (storedData && confirm('Continue from last time?')) {
+	storedData = JSON.parse(storedData);
+	initialPath = storedData.path;
+	topLevelData = storedData.topLevelData;
+} else {
+	topLevelData = createTopLevelData(-0.7436424892193446, 0.1318316205585883, 5000000);
+}
+
+window.addEventListener("unload", function (e) {
+	localStorage.fractalJigsawPuzzleData001 = JSON.stringify({
+		path: currentLevel.path,
+		topLevelData: topLevelData
+	});
+}, false);
+
+var currentLevel = levelPath(initialPath);
+console.log(currentLevel.path);;;
 initLevel();
 
 var draggingPiece = null;
@@ -108,7 +125,8 @@ canvas.onmouseup = function (e) {
 		draggingPiece.levelData.cx = mouseX;
 		draggingPiece.levelData.cy = mouseY;
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
-			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
+			Math.abs(draggingPiece.levelData.fy - mouseY) < 13 &&
+			draggingPiece.levelData.isComplete) {
 				draggingPiece.levelData.cx = draggingPiece.levelData.fx;
 				draggingPiece.levelData.cy = draggingPiece.levelData.fy;
 				piecesToDraw.pop();							// move piece
@@ -119,6 +137,9 @@ canvas.onmouseup = function (e) {
 		draggingPiece = null;
 		event.preventDefault();
 		if (checkLevelDone()) {
+			if (currentLevel == topLevelData) {
+				alert('Puzzle solved!\nPlease send screenshot to\nthatmichaelpark@gmail.com');
+			}
 			zoomOut();
 		}
 	}
@@ -126,8 +147,10 @@ canvas.onmouseup = function (e) {
 
 window.addEventListener("keydown", function (e) {
 	if (e.keyCode == 27) {	// escape?
-		zoomOut();
-		redraw();
+		if (checkLevelDone()) {
+			zoomOut();
+			redraw();
+		}
 	}
 }, false);
 
@@ -140,6 +163,8 @@ window.addEventListener("keypress", function (e) {
 			piecesToDraw[i].levelData.isComplete = true;
 		}
 		redraw();
+	} else if (e.charCode == 63) {	// '?'
+		console.log(JSON.stringify(topLevelData).length);
 	}
 }, false);
 
@@ -154,7 +179,9 @@ function checkLevelDone() {
 
 function levelPath(path) {
 	var level = topLevelData;
+	console.log(path);;;
 	for (var i=0; i<path.length; ++i) {
+	console.log(path[i]);;;
 		if (level.children.length == 0) {
 			createChildren(level);
 		}
