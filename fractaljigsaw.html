@@ -788,7 +788,7 @@ function createTopLevelData(re, im, zoom, levels) {
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createLevelData([], re0, im0, dre, dim, 100, 230, 3125, 3125, 0, 0, 0, 0, 0, false, false, true);
+	return createLevelData([], re0, im0, dre, dim, 100, 230, 25*3125, 25*3125, 0, 0, 0, 0, 0, false, false, true);
 }
 
 function createLevelData(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, inPlace, isComplete, isTop) {
