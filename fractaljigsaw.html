@@ -103,7 +103,7 @@ function mousedownHandler(e) {
 					draggingPiece.levelData.cy = mouseY + mouseOffsetY;
 				}
 //			}
-			event.preventDefault();
+			e.preventDefault();
 			break;
 		}
 	}
@@ -117,7 +117,7 @@ function mousemoveHandler(e) {
 		draggingPiece.levelData.cx = mouseX;
 		draggingPiece.levelData.cy = mouseY;
 		redraw();
-		event.preventDefault();
+		e.preventDefault();
 	}
 }
 
@@ -139,7 +139,7 @@ function mouseupHandler(e) {
 		}
 		redraw();
 		draggingPiece = null;
-		event.preventDefault();
+		e.preventDefault();
 		if (checkLevelDone()) {
 			if (currentLevel == topLevelData) {
 				alert('Puzzle solved!\nPlease send screenshot to\nthatmichaelpark@gmail.com');
