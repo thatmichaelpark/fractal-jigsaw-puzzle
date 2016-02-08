@@ -82,8 +82,8 @@ function mousedownHandler(e) {
 			}
 			selectedPiece = piecesToDraw[i];
 			setTimeout(function () { selectedPiece = null; }, 300);
-			
-			if (event.ctrlKey) {
+/*			
+			if (e.ctrlKey) {
 				piecesToDraw[i].levelData.cx = piecesToDraw[i].levelData.fx;
 				piecesToDraw[i].levelData.cy = piecesToDraw[i].levelData.fy;
 				piecesToDraw[i].levelData.inPlace = true;
@@ -93,7 +93,7 @@ function mousedownHandler(e) {
 				if (checkLevelDone()) {
 					zoomOut();
 				}
-			} else {
+			} else {*/
 				if (!piecesToDraw[i].levelData.inPlace) {
 					draggingPiece = piecesToDraw[i];
 					piecesToDraw.splice(i, 1);			// move touched piece
@@ -102,7 +102,7 @@ function mousedownHandler(e) {
 					draggingPiece.levelData.cx = mouseX + mouseOffsetX;
 					draggingPiece.levelData.cy = mouseY + mouseOffsetY;
 				}
-			}
+//			}
 			event.preventDefault();
 			break;
 		}
