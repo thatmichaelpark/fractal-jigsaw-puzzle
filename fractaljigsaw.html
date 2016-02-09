@@ -34,7 +34,7 @@ var worker = new Worker('worker.js');
 var piecesToDraw = [];
 var backgroundPiece = null;
 
-var initialPath = [24, 25, 25, 25];
+var initialPath = [24, 24, 23, 25];
 var maxPathLength = 4;
 var topLevelData;
 
@@ -361,8 +361,10 @@ var zoomInLevel;
 
 function zoomIn(path) {
 	zoomInLevel = levelPath(path);
-	redrawFunction = zoomInLevel.isComplete ? zoomInRedrawComplete : zoomInRedrawBlank;
-	zoomInSound.play();
+	if (zoomInLevel.du > 1) {
+		redrawFunction = zoomInLevel.isComplete ? zoomInRedrawComplete : zoomInRedrawBlank;
+		zoomInSound.play();
+	}
 }
 
 function zoomInRedrawBlank(ms) {
@@ -788,7 +790,7 @@ function createTopLevelData(re, im, zoom, levels) {
 	var im0 = im + 2/zoom;
 	var dre = 4 / zoom;
 	var dim = -4 / zoom;
-	return createLevelData([], re0, im0, dre, dim, 100, 230, 25*3125, 25*3125, 0, 0, 0, 0, 0, false, false, true);
+	return createLevelData([], re0, im0, dre, dim, 100, 230, 3125, 3125, 0, 0, 0, 0, 0, false, false, true);
 }
 
 function createLevelData(path, re0, im0, dre, dim, u0, v0, du, dv, cx, cy, fx, fy, rot, inPlace, isComplete, isTop) {
