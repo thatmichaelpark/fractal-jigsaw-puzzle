@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<title>Fractal Jigsaw Puzzle</title>
+	<title>Fractal Jigsaw Puzzle 0.02</title>
 	<style>
 
 #drawdiv {
@@ -99,8 +99,7 @@ function mousedownHandler(e) {
 					piecesToDraw.splice(i, 1);			// move touched piece
 					piecesToDraw.push(draggingPiece);	//  to top
 					draggingPiece.levelData.inPlace = false;
-					draggingPiece.levelData.cx = mouseX + mouseOffsetX;
-					draggingPiece.levelData.cy = mouseY + mouseOffsetY;
+					movePiece(mouseX + mouseOffsetX, mouseY + mouseOffsetY);
 				}
 //			}
 			e.preventDefault();
@@ -110,12 +109,23 @@ function mousedownHandler(e) {
 	redraw();
 }
 
+function movePiece(toX, toY) {
+// move draggingPiece and pieces in its group to (toX, toY)
+	var dx = toX - draggingPiece.levelData.cx;
+	var dy = toY - draggingPiece.levelData.cy;
+	var group = draggingPiece.group;
+	for (var i=0; i<group.length; ++i) {
+		var p = group[i];
+		p.levelData.cx += dx;
+		p.levelData.cy += dy;
+	}
+}
+
 function mousemoveHandler(e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
 		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
-		draggingPiece.levelData.cx = mouseX;
-		draggingPiece.levelData.cy = mouseY;
+		movePiece(mouseX, mouseY);
 		redraw();
 		e.preventDefault();
 	}
@@ -125,13 +135,11 @@ function mouseupHandler(e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
 		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
-		draggingPiece.levelData.cx = mouseX;
-		draggingPiece.levelData.cy = mouseY;
+		movePiece(mouseX, mouseY);
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13 &&
 			draggingPiece.levelData.isComplete) {
-				draggingPiece.levelData.cx = draggingPiece.levelData.fx;
-				draggingPiece.levelData.cy = draggingPiece.levelData.fy;
+				movePiece(draggingPiece.levelData.fx, draggingPiece.levelData.fy);
 				piecesToDraw.pop();							// move piece
 				piecesToDraw.unshift(draggingPiece);		//  to bottom
 				draggingPiece.levelData.inPlace = true;
@@ -249,6 +257,7 @@ function initLevel(priorityLevel) {
 		piece.inoutline();
 		piece.toImg();
 		piecesToDraw.push(piece);
+		piece.group = [piece];
 	}
 	piecesToDraw.sort(function (a, b) { return a.levelData.zOrder - b.levelData.zOrder; });
 	redraw();
