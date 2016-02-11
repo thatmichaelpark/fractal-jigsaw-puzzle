@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<title>Fractal Jigsaw Puzzle 0.02</title>
+	<title>Fractal Jigsaw Puzzle 0.02a</title>
 	<style>
 
 #drawdiv {
@@ -96,10 +96,15 @@ function mousedownHandler(e) {
 			} else {*/
 				if (!piecesToDraw[i].levelData.inPlace) {
 					draggingPiece = piecesToDraw[i];
-					piecesToDraw.splice(i, 1);			// move touched piece
-					piecesToDraw.push(draggingPiece);	//  to top
-					draggingPiece.levelData.inPlace = false;
-					movePiece(mouseX + mouseOffsetX, mouseY + mouseOffsetY);
+					// move all pieces in draggingPiece's group to the top:
+					for (var j=piecesToDraw.length; --j>=0;) {
+						if (piecesToDraw[j].group == draggingPiece.group) {
+							var p = piecesToDraw.splice(j, 1)[0];	// move piece
+							piecesToDraw.push(p);					//  to top (i.e., end of the line)
+							p.levelData.inPlace = false;
+						}
+					}
+					movePieceTo(mouseX + mouseOffsetX, mouseY + mouseOffsetY);
 				}
 //			}
 			e.preventDefault();
@@ -109,10 +114,15 @@ function mousedownHandler(e) {
 	redraw();
 }
 
-function movePiece(toX, toY) {
-// move draggingPiece and pieces in its group to (toX, toY)
-	var dx = toX - draggingPiece.levelData.cx;
-	var dy = toY - draggingPiece.levelData.cy;
+function movePieceTo(x, y) {
+// move draggingPiece and pieces in its group to (x, y)
+	var dx = x - draggingPiece.levelData.cx;
+	var dy = y - draggingPiece.levelData.cy;
+	movePieceBy(dx, dy);
+}
+
+function movePieceBy(dx, dy) {
+// move draggingPiece and pieces in its group by (dx, dy)
 	var group = draggingPiece.group;
 	for (var i=0; i<group.length; ++i) {
 		var p = group[i];
@@ -125,7 +135,7 @@ function mousemoveHandler(e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
 		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
-		movePiece(mouseX, mouseY);
+		movePieceTo(mouseX, mouseY);
 		redraw();
 		e.preventDefault();
 	}
@@ -135,15 +145,20 @@ function mouseupHandler(e) {
 	if (draggingPiece != null) {
 		var mouseX = e.clientX - canvas.width/2 + mouseOffsetX;
 		var mouseY = e.clientY - canvas.height/2 + mouseOffsetY;
-		movePiece(mouseX, mouseY);
+		movePieceTo(mouseX, mouseY);
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13 &&
 			draggingPiece.levelData.isComplete) {
-				movePiece(draggingPiece.levelData.fx, draggingPiece.levelData.fy);
-				piecesToDraw.pop();							// move piece
-				piecesToDraw.unshift(draggingPiece);		//  to bottom
-				draggingPiece.levelData.inPlace = true;
+				movePieceTo(draggingPiece.levelData.fx, draggingPiece.levelData.fy);
+				for (var i=draggingPiece.group.length; --i>=0;) {
+					var p = piecesToDraw.pop();		// move piece
+					piecesToDraw.unshift(p);		//  to bottom
+					p.levelData.inPlace = true;
+					p.group = null;
+				}
 				clickSound.play();
+		} else {
+			checkGroupToGroup();
 		}
 		redraw();
 		draggingPiece = null;
@@ -156,6 +171,58 @@ function mouseupHandler(e) {
 		}
 	}
 }
+
+function checkGroupToGroup() {
+// look for piece-to-piece joining opportunities between pieces in draggingPiece's group
+// and pieces that are not in-place and not in draggingPiece's group.
+	var g = draggingPiece.group;
+	for (var i=0; i<g.length; ++i) {
+		var p = g[i];
+		for (var j=0; j<piecesToDraw.length; ++j) {
+			var q = piecesToDraw[j];
+			if (q.levelData.inPlace || q.group == g) {
+				continue;
+			}
+			var res = clickCheck(p, q);
+			if (res != null) {
+				movePieceBy(res.dx, res.dy);
+				clickSound.play();
+				// now combine p's group and q's
+				var g = [];
+				for (var k=0; k<q.group.length; ++k) {
+					p.group.push(q.group[k]);
+					g.push(q.group[k]);
+				}
+				for (var k=0; k<g.length; ++k) {
+					g[k].group = p.group;
+				}
+				// move all pieces in draggingPiece's group to the top:
+				for (var k=piecesToDraw.length; --k>=0;) {
+					if (piecesToDraw[k].group == draggingPiece.group) {
+						var p = piecesToDraw.splice(k, 1)[0];	// move piece
+						piecesToDraw.push(p);					//  to top (i.e., end of the line)
+					}
+				}
+				return;
+			}
+		}
+	}
+	function clickCheck(p, q) {
+	// see if p and q are supposed to be adjacent and if so determine if they're close enough to click together.
+	// If they aren't, return null.
+	// If they are, return {dx, dy}, the nudge needed to make them click.
+		var d = Math.abs(p.levelData.path.slice(-1)[0] - q.levelData.path.slice(-1)[0]);
+		if (d == 1 || d == 7) {
+			var fx = q.levelData.cx + p.levelData.fx - q.levelData.fx;
+			var fy = q.levelData.cy + p.levelData.fy - q.levelData.fy;
+			if (Math.abs(fx - p.levelData.cx) < 13 && Math.abs(fy - p.levelData.cy) < 13) {
+				return {dx: fx - p.levelData.cx, dy: fy - p.levelData.cy};
+			}
+		}
+		return null;
+	}
+}
+
 
 function enableMouse() {
 	canvas.addEventListener('mousedown', mousedownHandler, false); 
