@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
-	<title>Fractal Jigsaw Puzzle 0.02a</title>
+	<title>Fractal Jigsaw Puzzle</title>
 	<style>
 
 #drawdiv {
@@ -98,7 +98,7 @@ function mousedownHandler(e) {
 					draggingPiece = piecesToDraw[i];
 					// move all pieces in draggingPiece's group to the top:
 					for (var j=piecesToDraw.length; --j>=0;) {
-						if (piecesToDraw[j].group == draggingPiece.group) {
+						if (piecesToDraw[j].levelData.group == draggingPiece.levelData.group) {
 							var p = piecesToDraw.splice(j, 1)[0];	// move piece
 							piecesToDraw.push(p);					//  to top (i.e., end of the line)
 							p.levelData.inPlace = false;
@@ -123,11 +123,20 @@ function movePieceTo(x, y) {
 
 function movePieceBy(dx, dy) {
 // move draggingPiece and pieces in its group by (dx, dy)
-	var group = draggingPiece.group;
+	var group = draggingPiece.levelData.group;
 	for (var i=0; i<group.length; ++i) {
-		var p = group[i];
+		var p = findPieceByPath(group[i]);
 		p.levelData.cx += dx;
 		p.levelData.cy += dy;
+	}
+}
+
+function findPieceByPath(path) {
+	var l = levelPath(path);
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		if (piecesToDraw[i].levelData == l) {
+			return piecesToDraw[i];
+		}
 	}
 }
 
@@ -150,11 +159,10 @@ function mouseupHandler(e) {
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13 &&
 			draggingPiece.levelData.isComplete) {
 				movePieceTo(draggingPiece.levelData.fx, draggingPiece.levelData.fy);
-				for (var i=draggingPiece.group.length; --i>=0;) {
+				for (var i=draggingPiece.levelData.group.length; --i>=0;) {
 					var p = piecesToDraw.pop();		// move piece
 					piecesToDraw.unshift(p);		//  to bottom
 					p.levelData.inPlace = true;
-					p.group = null;
 				}
 				clickSound.play();
 		} else {
@@ -175,12 +183,12 @@ function mouseupHandler(e) {
 function checkGroupToGroup() {
 // look for piece-to-piece joining opportunities between pieces in draggingPiece's group
 // and pieces that are not in-place and not in draggingPiece's group.
-	var g = draggingPiece.group;
-	for (var i=0; i<g.length; ++i) {
-		var p = g[i];
+	var draggingGroup = draggingPiece.levelData.group;
+	for (var i=0; i<draggingGroup.length; ++i) {
+		var p = findPieceByPath(draggingGroup[i]);
 		for (var j=0; j<piecesToDraw.length; ++j) {
 			var q = piecesToDraw[j];
-			if (q.levelData.inPlace || q.group == g) {
+			if (q.levelData.inPlace || q.levelData.group == draggingGroup) {
 				continue;
 			}
 			var res = clickCheck(p, q);
@@ -189,16 +197,16 @@ function checkGroupToGroup() {
 				clickSound.play();
 				// now combine p's group and q's
 				var g = [];
-				for (var k=0; k<q.group.length; ++k) {
-					p.group.push(q.group[k]);
-					g.push(q.group[k]);
+				for (var k=0; k<q.levelData.group.length; ++k) {
+					p.levelData.group.push(q.levelData.group[k]);
+					g.push(q.levelData.group[k]);
 				}
 				for (var k=0; k<g.length; ++k) {
-					g[k].group = p.group;
+					findPieceByPath(g[k]).levelData.group = p.levelData.group;
 				}
 				// move all pieces in draggingPiece's group to the top:
 				for (var k=piecesToDraw.length; --k>=0;) {
-					if (piecesToDraw[k].group == draggingPiece.group) {
+					if (piecesToDraw[k].levelData.group == draggingPiece.levelData.group) {
 						var p = piecesToDraw.splice(k, 1)[0];	// move piece
 						piecesToDraw.push(p);					//  to top (i.e., end of the line)
 					}
@@ -211,6 +219,9 @@ function checkGroupToGroup() {
 	// see if p and q are supposed to be adjacent and if so determine if they're close enough to click together.
 	// If they aren't, return null.
 	// If they are, return {dx, dy}, the nudge needed to make them click.
+		if (!p.levelData.isComplete || !q.levelData.isComplete) {
+			return null;
+		}
 		var d = Math.abs(p.levelData.path.slice(-1)[0] - q.levelData.path.slice(-1)[0]);
 		if (d == 1 || d == 7) {
 			var fx = q.levelData.cx + p.levelData.fx - q.levelData.fx;
@@ -324,8 +335,28 @@ function initLevel(priorityLevel) {
 		piece.inoutline();
 		piece.toImg();
 		piecesToDraw.push(piece);
-		piece.group = [piece];
+		if (piece.levelData.group == undefined) {
+			piece.levelData.group = [piece.levelData.path];
+		}
 	}
+	
+	// If the level has been saved and restored, group arrays need to be redone.
+	// Example: a's group is [a, b] and b's group is [a, b], BUT they are two separate arrays;
+	// there should be one [a, b] array and both a's and b's group should point to it.
+	for (var i=0; i<piecesToDraw.length; ++i) {
+		var p = piecesToDraw[i];
+		var g = p.levelData.group;
+		// for each piece in p's group, set its group to g.
+		// there will be duplicated effort as the same thing will be done for each
+		// member of p's group, but at the end, every member of the group will use the same array
+		if (g.length > 1){
+			for (var j=0; j<g.length; ++j) {
+				var q = findPieceByPath(g[j]);
+				q.levelData.group = g;
+			}
+		}		
+	}
+	
 	piecesToDraw.sort(function (a, b) { return a.levelData.zOrder - b.levelData.zOrder; });
 	redraw();
 	
