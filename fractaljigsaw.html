@@ -189,7 +189,8 @@ function playSound(sound) {
 	}
 }
 
-setInterval(function () {	// emergency backup redraw;;;
+setInterval(function () {	// emergency backup redraw:
+							// for some unknown reason, sometimes a piece does not get drawn; hopefully an occasional extra redraw will help.
 	redraw();
 }, 1000);
 
@@ -376,7 +377,7 @@ function enableMouse() {
 	canvas.addEventListener('mousemove', mousemoveHandler, false); 
 	canvas.addEventListener('mouseup', mouseupHandler, false); 
 	window.addEventListener("keydown", keydownHandler, false);
-	window.addEventListener("keypress", keypressHandler, false);
+//	window.addEventListener("keypress", keypressHandler, false);
 }
 
 enableMouse();
@@ -386,7 +387,7 @@ function disableMouse() {
 	canvas.removeEventListener('mousemove', mousemoveHandler); 
 	canvas.removeEventListener('mouseup', mouseupHandler); 
 	window.removeEventListener("keydown", keydownHandler);
-	window.removeEventListener("keypress", keypressHandler);
+//	window.removeEventListener("keypress", keypressHandler);
 }
 
 function keydownHandler(e) {
@@ -436,7 +437,6 @@ function levelPath(path) {
 function initLevel(priorityLevel) {
 // for currentLevel, create Piece objects for backgroundPiece and piecesToDraw.
 // priorityLevel is moved to the front of the worker render queue.
-console.log(currentLevel.path);;;
 
 	for (var i=0; i<piecesToDraw.length; ++i) {	// preserve drawing order
 		piecesToDraw[i].levelData.zOrder = i;	//  of old current level
