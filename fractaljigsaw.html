@@ -12,6 +12,44 @@
 	right: 0;
 	bottom: 0;
 }
+#messageparent {
+	display: none;
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+}
+
+.message {
+	position: fixed;
+	margin: auto;
+	padding: 20px;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 200px;
+	height: 150px;
+	background: white;
+}
+#cant_place {
+	display: none;
+}
+#cant_group {
+	display: none;
+}
+#hit_escape {
+	display: none;
+}
+#sound_on {
+	display: none;
+}
+#sound_off {
+	display: none;
+}
+
 
 	</style>
 </head>
@@ -19,6 +57,26 @@
 	<div id="drawdiv"">
 		<canvas id="canvas">
 		</canvas>
+		<div id="messageparent">
+			<div class="message" id="cant_place">
+				<p>Only solved pieces click into place.</p>
+				<p>Double-click unsolved pieces and solve them first.</p>
+			</div>
+			<div class="message" id="cant_group">
+				<p>Only solved pieces can snap together.</p>
+				<p>Double-click unsolved pieces and solve them first.</p>
+			</div>
+			<div class="message" id="hit_escape">
+				<p>This puzzle is already solved.</p>
+				<p>Hit ESCAPE to go back.</p>
+			</div>
+			<div class="message" id="sound_on">
+				<p>Sound is now on.</p>
+			</div>
+			<div class="message" id="sound_off">
+				<p>Sound is now off.</p>
+			</div>
+		</div>
 	</div>
 	<script src="piece.js"></script>
 	<script>
@@ -34,9 +92,36 @@ var worker = new Worker('worker.js');
 var piecesToDraw = [];
 var backgroundPiece = null;
 
-var initialPath = [24, 24, 23, 25];
+function blah() {
+	function _101() {
+		// randomly return -1, 0, or 1
+		return Math.floor(Math.random() * 3 - 1);
+	}
+	return 24 + _101() * 7 + _101();
+	// 24 is center piece; +/- 7 is piece below/above; +/- 1 is piece to the right/left.
+}
+
+var initialPaths = [
+	[30, 18, 40, 9],
+	[31, 17, 23, 31],
+	[24, 30, 17, 25],
+	[32, 18, 25, 39],
+	[32, 16, 32, 25],
+	[25, 17, 31, 30],
+	[23, 30, 17, 30],
+	[18, 24, 17, 39],
+	[17, 16, 16, 24],
+	[17, 16, 24, 29],
+	[24, 17, 23, 30],
+	[25, 30, 16, 31]
+];
+
+var initialPath = initialPaths[Math.floor(Math.random() * initialPaths.length)];	// [blah(), blah(), blah(), blah()];
+
 var maxPathLength = 4;
 var topLevelData;
+var messagesDisplayed;
+var soundEnabled;
 
 var storedData = localStorage.fractalJigsawPuzzleData001;
 
@@ -44,6 +129,8 @@ if (storedData && confirm('Continue from last time?')) {
 	storedData = JSON.parse(storedData);
 	initialPath = storedData.path;
 	topLevelData = storedData.topLevelData;
+	messagesDisplayed = storedData.messagesDisplayed;
+	soundEnabled = storedData.soundEnabled;
 } else {
 	topLevelData = createTopLevelData(-0.7436424892193446, 0.1318316205585883, 5000000);
 }
@@ -51,16 +138,63 @@ if (storedData && confirm('Continue from last time?')) {
 window.addEventListener("unload", function (e) {
 	localStorage.fractalJigsawPuzzleData001 = JSON.stringify({
 		path: currentLevel.path,
-		topLevelData: topLevelData
+		topLevelData: topLevelData,
+		messagesDisplayed: messagesDisplayed,
+		soundEnabled: soundEnabled
 	});
 }, false);
 
-var currentLevel = levelPath(initialPath);
-initLevel();
+var messageParent = document.getElementById('messageparent');
+var activeMessage = null;
+
+if (messagesDisplayed == undefined) {
+	messagesDisplayed = {
+		cant_place: false,
+		cant_group: false,
+		hit_escape: false
+	};
+}
+
+messageParent.addEventListener('mousedown', function () {
+	activeMessage.style.display = 'none';
+	activeMessage = null;
+	messageParent.style.display = 'none';
+});
+
+function displayMessage(m) {
+	if (activeMessage != null) {
+		activeMessage.style.display = 'none';
+	}
+	if (!messagesDisplayed[m]) {
+		if (m != 'sound_on' && m != 'sound_off') {
+			messagesDisplayed[m] = true;	// display messages only once, except sound status.
+		}
+		activeMessage = document.getElementById(m);
+		activeMessage.style.display = 'block';
+		messageParent.style.display = 'block';
+	}
+}
 
 var clickSound = new Audio('sounds/178186__snapper4298__camera-click-nikon.wav');
 var zoomOutSound = new Audio('sounds/333078__michael-kur95__time-s-up.wav');
 var zoomInSound = new Audio('sounds/333078__michael-kur95__time-s-up_reversed.wav');
+
+if (soundEnabled == undefined) {
+	soundEnabled = true;
+}
+
+function playSound(sound) {
+	if (soundEnabled) {
+		sound.play();
+	}
+}
+
+setInterval(function () {	// emergency backup redraw;;;
+	redraw();
+}, 1000);
+
+var currentLevel = levelPath(initialPath);
+initLevel();
 
 var draggingPiece = null;
 var selectedPiece = null;
@@ -75,10 +209,8 @@ function mousedownHandler(e) {
 			mouseOffsetX = ht.x;
 			mouseOffsetY = ht.y;
 			if (selectedPiece == piecesToDraw[i]) {		// double-click
-				if (selectedPiece.levelData.children) {	// not lowest level?
-					zoomIn(selectedPiece.levelData.path);
-					break;
-				}
+				zoomIn(selectedPiece.levelData.path);
+				break;
 			}
 			selectedPiece = piecesToDraw[i];
 			setTimeout(function () { selectedPiece = null; }, 300);
@@ -156,15 +288,18 @@ function mouseupHandler(e) {
 		var mouseY = e.clientY + document.body.scrollTop - canvas.height/2 + mouseOffsetY;
 		movePieceTo(mouseX, mouseY);
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
-			Math.abs(draggingPiece.levelData.fy - mouseY) < 13 &&
-			draggingPiece.levelData.isComplete) {
+			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
+			if (draggingPiece.levelData.isComplete) {
 				movePieceTo(draggingPiece.levelData.fx, draggingPiece.levelData.fy);
 				for (var i=draggingPiece.levelData.group.length; --i>=0;) {
 					var p = piecesToDraw.pop();		// move piece
 					piecesToDraw.unshift(p);		//  to bottom
 					p.levelData.inPlace = true;
 				}
-				clickSound.play();
+				playSound(clickSound);
+			} else {
+				displayMessage('cant_place');
+			}
 		} else {
 			checkGroupToGroup();
 		}
@@ -188,13 +323,13 @@ function checkGroupToGroup() {
 		var p = findPieceByPath(draggingGroup[i]);
 		for (var j=0; j<piecesToDraw.length; ++j) {
 			var q = piecesToDraw[j];
-			if (q.levelData.inPlace || q.levelData.group == draggingGroup) {
+			if (/*q.levelData.inPlace ||*/ q.levelData.group == draggingGroup) {
 				continue;
 			}
 			var res = clickCheck(p, q);
 			if (res != null) {
 				movePieceBy(res.dx, res.dy);
-				clickSound.play();
+				playSound(clickSound);
 				// now combine p's group and q's
 				var g = [];
 				for (var k=0; k<q.levelData.group.length; ++k) {
@@ -219,14 +354,15 @@ function checkGroupToGroup() {
 	// see if p and q are supposed to be adjacent and if so determine if they're close enough to click together.
 	// If they aren't, return null.
 	// If they are, return {dx, dy}, the nudge needed to make them click.
-		if (!p.levelData.isComplete || !q.levelData.isComplete) {
-			return null;
-		}
 		var d = Math.abs(p.levelData.path.slice(-1)[0] - q.levelData.path.slice(-1)[0]);
 		if (d == 1 || d == 7) {
 			var fx = q.levelData.cx + p.levelData.fx - q.levelData.fx;
 			var fy = q.levelData.cy + p.levelData.fy - q.levelData.fy;
 			if (Math.abs(fx - p.levelData.cx) < 13 && Math.abs(fy - p.levelData.cy) < 13) {
+				if (!p.levelData.isComplete || !q.levelData.isComplete) {
+					displayMessage('cant_group');
+					return null;
+				}
 				return {dx: fx - p.levelData.cx, dy: fy - p.levelData.cy};
 			}
 		}
@@ -240,7 +376,7 @@ function enableMouse() {
 	canvas.addEventListener('mousemove', mousemoveHandler, false); 
 	canvas.addEventListener('mouseup', mouseupHandler, false); 
 	window.addEventListener("keydown", keydownHandler, false);
-//	window.addEventListener("keypress", keypressHandler, false);
+	window.addEventListener("keypress", keypressHandler, false);
 }
 
 enableMouse();
@@ -250,7 +386,7 @@ function disableMouse() {
 	canvas.removeEventListener('mousemove', mousemoveHandler); 
 	canvas.removeEventListener('mouseup', mouseupHandler); 
 	window.removeEventListener("keydown", keydownHandler);
-//	window.removeEventListener("keypress", keypressHandler);
+	window.removeEventListener("keypress", keypressHandler);
 }
 
 function keydownHandler(e) {
@@ -259,11 +395,14 @@ function keydownHandler(e) {
 			zoomOut();
 			redraw();
 		}
+	} else if (e.keyCode == 83) {	// 's'
+		soundEnabled = !soundEnabled;
+		displayMessage(soundEnabled ? 'sound_on' : 'sound_off');
 	}
 }
 
 function keypressHandler(e) {
-	if (e.charCode == 115) {	// 's'
+	if (e.charCode == 97) {	// 'a'
 		for (var i=0; i<piecesToDraw.length; ++i) {
 			piecesToDraw[i].levelData.cx = piecesToDraw[i].levelData.fx;
 			piecesToDraw[i].levelData.cy = piecesToDraw[i].levelData.fy;
@@ -271,8 +410,6 @@ function keypressHandler(e) {
 			piecesToDraw[i].levelData.isComplete = true;
 		}
 		redraw();
-	} else if (e.charCode == 63) {	// '?'
-		console.log(JSON.stringify(topLevelData).length);
 	}
 }
 
@@ -299,6 +436,7 @@ function levelPath(path) {
 function initLevel(priorityLevel) {
 // for currentLevel, create Piece objects for backgroundPiece and piecesToDraw.
 // priorityLevel is moved to the front of the worker render queue.
+console.log(currentLevel.path);;;
 
 	for (var i=0; i<piecesToDraw.length; ++i) {	// preserve drawing order
 		piecesToDraw[i].levelData.zOrder = i;	//  of old current level
@@ -470,7 +608,7 @@ function zoomIn(path) {
 	zoomInLevel = levelPath(path);
 	if (zoomInLevel.du > 1) {
 		redrawFunction = zoomInLevel.isComplete ? zoomInRedrawComplete : zoomInRedrawBlank;
-		zoomInSound.play();
+		playSound(zoomInSound);
 	}
 }
 
@@ -622,6 +760,9 @@ function zoomInRedrawComplete(ms) {
 			t = zoomTime;
 			zooming = false;
 			redrawFunction = waitTillAllRendered;
+			if (currentLevel.isComplete) {
+				displayMessage('hit_escape');
+			}
 		}
 		var s = easingFunction(t/zoomTime);
 		ziScale = 1 + s * 4;		// 1..5
@@ -693,7 +834,7 @@ function zoomOut() {
 		} else {
 			redrawFunction = zoomOutRedrawBlank;
 		}
-		zoomOutSound.play();
+		playSound(zoomOutSound);
 	}
 }
 
