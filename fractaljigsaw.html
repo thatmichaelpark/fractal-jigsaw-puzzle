@@ -201,9 +201,17 @@ var draggingPiece = null;
 var selectedPiece = null;
 var mouseOffsetX, mouseOffsetY;
 
+function scrollLeft() {
+	return document.documentElement.scrollLeft || document.body.scrollLeft;
+}
+
+function scrollTop() {
+	return document.documentElement.scrollTop || document.body.scrollTop;
+}
+
 function mousedownHandler(e) {
-	var mouseX = e.clientX + document.body.scrollLeft - canvas.width/2;
-	var mouseY = e.clientY + document.body.scrollTop  - canvas.height/2;
+	var mouseX = e.clientX + scrollLeft() - canvas.width/2;
+	var mouseY = e.clientY + scrollTop()  - canvas.height/2;
 	for (var i=piecesToDraw.length; --i>=0;) {
 		var ht = piecesToDraw[i].hitTest(mouseX, mouseY);
 		if (ht) {
@@ -275,8 +283,8 @@ function findPieceByPath(path) {
 
 function mousemoveHandler(e) {
 	if (draggingPiece != null) {
-		var mouseX = e.clientX + document.body.scrollLeft - canvas.width/2 + mouseOffsetX;
-		var mouseY = e.clientY + document.body.scrollTop - canvas.height/2 + mouseOffsetY;
+		var mouseX = e.clientX + scrollLeft() - canvas.width/2 + mouseOffsetX;
+		var mouseY = e.clientY + scrollTop() - canvas.height/2 + mouseOffsetY;
 		movePieceTo(mouseX, mouseY);
 		redraw();
 		e.preventDefault();
@@ -285,8 +293,8 @@ function mousemoveHandler(e) {
 
 function mouseupHandler(e) {
 	if (draggingPiece != null) {
-		var mouseX = e.clientX + document.body.scrollLeft - canvas.width/2 + mouseOffsetX;
-		var mouseY = e.clientY + document.body.scrollTop - canvas.height/2 + mouseOffsetY;
+		var mouseX = e.clientX + scrollLeft() - canvas.width/2 + mouseOffsetX;
+		var mouseY = e.clientY + scrollTop() - canvas.height/2 + mouseOffsetY;
 		movePieceTo(mouseX, mouseY);
 		if (Math.abs(draggingPiece.levelData.fx - mouseX) < 13 &&
 			Math.abs(draggingPiece.levelData.fy - mouseY) < 13) {
