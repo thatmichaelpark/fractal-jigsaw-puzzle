@@ -195,6 +195,16 @@ setInterval(function () {	// emergency backup redraw:
 }, 1000);
 
 var currentLevel = levelPath(initialPath);
+
+// B.B.'s bug fix: ensure that placed pieces are drawn before floating pieces
+// (otherwise floating pieces can get hidden and trapped behind placed pieces)
+for (let i = 0; i < currentLevel.children.length; ++i) {
+	const child = currentLevel.children[i];
+	if (!child) {
+		continue;
+	}
+	child.zOrder = child.inPlace ? 0 : 1;
+}
 initLevel();
 
 var draggingPiece = null;
